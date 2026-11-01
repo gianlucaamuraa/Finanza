@@ -71,6 +71,8 @@ async function run(fn: () => Promise<void>): Promise<ActionState> {
 
 export async function login(_: ActionState, fd: FormData): Promise<ActionState> {
   const password = String(fd.get("password") ?? "");
+  if (!process.env.APP_PASSWORD || (process.env.AUTH_SECRET ?? "").length < 32)
+    return { ok: false, error: "Configurazione incompleta: controlla APP_PASSWORD e AUTH_SECRET su Vercel (vedi il riquadro sopra)." };
   if (!password || !checkPassword(password)) {
     await new Promise((r) => setTimeout(r, 600)); // rallenta i tentativi
     return { ok: false, error: "Password errata" };

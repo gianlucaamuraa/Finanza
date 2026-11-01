@@ -9,17 +9,27 @@ export function sslFor(url: string) {
   return host === "localhost" || host === "127.0.0.1" ? false : ("require" as const);
 }
 
-const globalForDb = globalThis as unknown as { pg?: ReturnType<typeof postgres> };
-
-function client() {
+function create() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL non impostata");
   // prepare: false per compatibilità con i pooler (Supabase/Neon in modalità transaction)
-  return postgres(url, { prepare: false, max: 5, ssl: sslFor(url) });
+  const pg = postgres(url, { prepare: false, max: 5, ssl: sslFor(url) });
+  return drizzle(pg, { schema });
 }
 
-const pg = globalForDb.pg ?? client();
-if (process.env.NODE_ENV !== "production") globalForDb.pg = pg;
+type DB = ReturnType<typeof create>;
+const g = globalThis as unknown as { finanzaDb?: DB };
 
-export const db = drizzle(pg, { schema });
+/**
+ * Connessione creata al primo utilizzo: se DATABASE_URL manca, l'errore
+ * arriva solo quando si legge o scrive, non al caricamento dell'app.
+ */
+export const db = new Proxy({} as DB, {
+  get(_, prop) {
+    g.finanzaDb ??= create();
+    const real = g.finanzaDb;
+    const v = Reflect.get(real, prop, real);
+    return typeof v === "function" ? v.bind(real) : v;
+  },
+});
 export { schema };

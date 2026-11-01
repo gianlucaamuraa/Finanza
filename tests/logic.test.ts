@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { eur, parseAmount, toInput } from "../src/lib/money";
 import { periodOf, periodRange } from "../src/lib/period";
-import { dailyQuota, investmentYear, plannedAmount, plannedInfo } from "../src/lib/calc";
+import { dailyQuota, equalSplit, investmentYear, plannedAmount, plannedInfo } from "../src/lib/calc";
 
 describe("money", () => {
   it("parses Italian and English formats", () => {
@@ -54,11 +54,24 @@ describe("period", () => {
 });
 
 describe("planned expenses", () => {
-  it("computes rata and status", () => {
+  it("equal installments when none are saved", () => {
     const p = { totalAmount: 72000, startMonth: "2026-01", endMonth: "2026-12" };
-    expect(plannedInfo(p, "2026-11")).toMatchObject({ n: 12, rata: 6000, paid: 11, status: "active" });
-    expect(plannedInfo(p, "2025-12")).toMatchObject({ paid: 0, status: "future" });
-    expect(plannedInfo(p, "2027-01")).toMatchObject({ paid: 12, status: "done", accrued: 72000 });
+    expect(plannedInfo(p, "2026-11")).toMatchObject({ n: 12, rata: 6000, paid: 0, accrued: 0, status: "active", total: 72000 });
+    expect(plannedInfo(p, "2025-12")).toMatchObject({ status: "future" });
+    expect(plannedInfo(p, "2027-01")).toMatchObject({ status: "done" });
+  });
+  it("uses the monthly amounts and what was actually paid", () => {
+    // Assicurazione auto: 65 da gennaio a novembre, 85 a dicembre; versate gennaio-ottobre
+    const inst = new Map<string, { amount: number; paid: number | null }>();
+    for (let m = 1; m <= 12; m++) inst.set(`2026-${String(m).padStart(2, "0")}`, { amount: m === 12 ? 8500 : 6500, paid: m <= 10 ? 6500 : null });
+    const i = plannedInfo({ totalAmount: 80000, startMonth: "2026-01", endMonth: "2026-12", installments: inst }, "2026-11");
+    expect(i).toMatchObject({ n: 12, rata: 6500, paid: 10, accrued: 65000, total: 80000, status: "active", custom: false });
+    expect(i.now).toEqual({ amount: 6500, paid: null });
+    expect(plannedInfo({ totalAmount: 80000, startMonth: "2026-01", endMonth: "2026-12", installments: inst }, "2026-12").rata).toBe(8500);
+  });
+  it("splits a total exactly", () => {
+    const m = equalSplit(10000, ["2026-01", "2026-02", "2026-03"]);
+    expect([...m.values()]).toEqual([3333, 3333, 3334]);
   });
 });
 

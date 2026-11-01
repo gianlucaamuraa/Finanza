@@ -274,3 +274,17 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, var(--m
 .skeleton { background: linear-gradient(90deg, #eceef1, #f6f7f9, #eceef1); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: var(--radius); margin-bottom: 12px; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 button.card, a.card { display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.rates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; max-height: 320px; overflow-y: auto; }
+.rates label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.rates .input { padding: 10px 12px; font-size: 15px; }
+.inst-list { margin-bottom: 14px; }
+.inst { border-bottom: 1px solid var(--line); }
+.inst:last-child { border-bottom: none; }
+.inst-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 2px; background: none; border: none; cursor: pointer; text-align: left; }
+.inst-month { flex: 1; font-weight: 600; font-size: 15px; }
+.inst-month em { display: block; font-style: normal; font-size: 11px; color: var(--accent); font-weight: 600; }
+.inst-amount { font-weight: 600; font-size: 15px; min-width: 78px; text-align: right; }
+.inst .tag { min-width: 92px; text-align: center; }
+.inst.now { background: var(--accent-soft); margin: 0 -10px; padding: 0 10px; border-radius: 10px; }
+.inst-pay { padding: 4px 2px 12px; }
+.inst-pay .btn { margin-bottom: 8px; }

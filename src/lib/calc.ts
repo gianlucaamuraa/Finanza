@@ -1,22 +1,51 @@
-import { monthIndex, monthsInclusive, diffDays, type Day, type Month } from "./dates";
+import { monthFromIndex, monthIndex, diffDays, type Day, type Month } from "./dates";
 import type { PeriodRange } from "./period";
 
 export type PlannedStatus = "future" | "active" | "done";
 
+export type Installment = { amount: number; paid: number | null };
+
+/** Divide un totale in rate uguali sui mesi indicati (l'ultima assorbe gli arrotondamenti). */
+export function equalSplit(total: number, months: Month[]): Map<Month, number> {
+  const n = months.length;
+  const base = n ? Math.round(total / n) : 0;
+  return new Map(months.map((m, i) => [m, i === n - 1 ? total - base * (n - 1) : base]));
+}
+
+/**
+ * Stato di una spesa prevedibile nel mese corrente.
+ * Le rate (installments) hanno un importo per mese e l'importo effettivamente versato.
+ * Senza rate salvate il totale è diviso in rate uguali e nulla risulta versato.
+ */
 export function plannedInfo(
-  p: { totalAmount: number; startMonth: Month; endMonth: Month },
+  p: { totalAmount: number; startMonth: Month; endMonth: Month; installments?: Map<Month, Installment> },
   current: Month,
 ) {
-  const n = Math.max(1, monthsInclusive(p.startMonth, p.endMonth));
-  const rata = p.totalAmount / n;
-  const paid = Math.max(0, Math.min(n, monthIndex(current) - monthIndex(p.startMonth) + 1));
-  const status: PlannedStatus =
-    monthIndex(current) < monthIndex(p.startMonth)
-      ? "future"
-      : monthIndex(current) > monthIndex(p.endMonth)
-        ? "done"
-        : "active";
-  return { n, rata, paid, accrued: Math.round(rata * paid), status };
+  let rows: [Month, Installment][];
+  if (p.installments && p.installments.size > 0) rows = [...p.installments.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  else {
+    const months: Month[] = [];
+    for (let m = p.startMonth; monthIndex(m) <= monthIndex(p.endMonth); m = monthFromIndex(monthIndex(m) + 1)) months.push(m);
+    rows = [...equalSplit(p.totalAmount, months)].map(([m, amount]) => [m, { amount, paid: null }]);
+  }
+  const first = rows[0]?.[0] ?? p.startMonth, last = rows[rows.length - 1]?.[0] ?? p.endMonth;
+  const status: PlannedStatus = current < first ? "future" : current > last ? "done" : "active";
+  const byMonth = new Map(rows);
+  const now = byMonth.get(current) ?? null;
+  const rata = now?.amount ?? byMonth.get(status === "future" ? first : last)?.amount ?? 0;
+  const paidRows = rows.filter(([, r]) => r.paid != null);
+  return {
+    rows,
+    n: rows.length,
+    rata,
+    /** rata del mese corrente (null se questo mese non c'è rata) */
+    now,
+    paid: paidRows.length,
+    accrued: paidRows.reduce((a, [, r]) => a + (r.paid ?? 0), 0),
+    total: rows.reduce((a, [, r]) => a + r.amount, 0),
+    status,
+    custom: new Set(rows.map(([, r]) => r.amount)).size > 2,
+  };
 }
 
 /** Quota giornaliera: disponibile ÷ giorni che mancano al prossimo stipendio. */

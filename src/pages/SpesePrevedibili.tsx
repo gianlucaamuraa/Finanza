@@ -7,6 +7,7 @@ import { eur, sum } from "@/lib/money";
 import { IconBox } from "@/components/Icon";
 import { SheetTrigger } from "@/components/Sheet";
 import { PlannedForm } from "@/components/forms";
+import { PlannedDetail } from "@/components/PlannedDetail";
 import { LoadError, PageSkeleton } from "@/components/ui";
 
 const FILTERS: [string, string][] = [["tutte", "Tutte"], ["active", "In corso"], ["future", "Future"], ["done", "Concluse"]];
@@ -37,7 +38,7 @@ export default function SpesePrevedibili() {
         <div className="big num">{eur(Math.round(sum(active.map((x) => x.i.rata))), 2)}</div>
         <div className="pills">
           <div className="pill"><span>Spese in corso</span><b>{active.length}</b></div>
-          <div className="pill"><span>Già accantonato</span><b className="num">{eur(sum(active.map((x) => x.i.accrued)))}</b></div>
+          <div className="pill"><span>Già versato</span><b className="num">{eur(sum(active.map((x) => x.i.accrued)))}</b></div>
         </div>
       </div>
 
@@ -53,7 +54,7 @@ export default function SpesePrevedibili() {
         </div>
       ) : (
         shown.map(({ p, i }) => (
-          <SheetTrigger key={p.id} className="card" title="Modifica spesa prevedibile" content={<PlannedForm defaultStart={current} initial={p} />}>
+          <SheetTrigger key={p.id} className="card" title={p.name} content={<PlannedDetail planned={p} current={current} />}>
             <span style={{ display: "flex", gap: 12, alignItems: "center", textAlign: "left", width: "100%" }}>
               <IconBox name={p.icon} />
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -66,12 +67,14 @@ export default function SpesePrevedibili() {
               </span>
               <span style={{ textAlign: "right" }}>
                 <b className="num" style={{ fontSize: 18, display: "block" }}>{eur(i.rata, 2)}</b>
-                <small className="muted" style={{ fontSize: 11 }}>al mese</small>
+                <small className="muted" style={{ fontSize: 11 }}>
+                  {i.status === "active" ? (i.now ? (i.now.paid != null ? "versata" : "da versare") : "nessuna rata") : "al mese"}
+                </small>
               </span>
             </span>
-            <span className="progress" style={{ display: "block" }}><i style={{ width: `${(i.paid / i.n) * 100}%` }} /></span>
+            <span className="progress" style={{ display: "block" }}><i style={{ width: `${i.total ? (i.accrued / i.total) * 100 : 0}%` }} /></span>
             <span className="meta">
-              <span className="num">{eur(i.accrued)} di {eur(p.totalAmount)}</span>
+              <span className="num">Versato {eur(i.accrued, "auto")} di {eur(i.total, "auto")}</span>
               <span>{p.spent > 0 ? `Speso ${eur(p.spent, "auto")} · ` : ""}{i.paid}/{i.n} rate</span>
             </span>
           </SheetTrigger>

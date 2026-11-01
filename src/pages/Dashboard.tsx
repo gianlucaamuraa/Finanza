@@ -240,7 +240,7 @@ export default function Dashboard() {
                     <b>{p.name}</b>
                     <small>scade {monthLabel(p.endMonth, false)} · {i.paid}/{i.n} rate</small>
                   </div>
-                  <div className="right num">{eur(p.totalAmount)}<small>{eur(i.rata, 2)}/mese</small></div>
+                  <div className="right num">{eur(i.total)}<small>{eur(i.rata, 2)}/mese</small></div>
                 </div>
               ))}
             </div>

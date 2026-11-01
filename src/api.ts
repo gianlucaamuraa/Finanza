@@ -6,7 +6,7 @@ import { queryClient } from "./queryClient";
 import { periodRange } from "./lib/period";
 import { addMonths, daysInMonth, isDay, isMonth, monthIndex, type Month } from "./lib/dates";
 import { parseAmount } from "./lib/money";
-import { plannedAmount } from "./lib/calc";
+import { equalSplit, plannedAmount, type Installment } from "./lib/calc";
 import { ACCOUNT_COLORS, ACCOUNT_ICONS, CATEGORY_ICONS, PLANNED_ICONS } from "./lib/icon-keys";
 
 // ---------------- Tipi ----------------
@@ -24,6 +24,8 @@ export type Expense = {
 };
 export type Planned = {
   id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null; spent: number;
+  /** rate mese -> importo previsto e importo versato (null = non versata) */
+  installments: Map<Month, Installment>;
 };
 export type Investment = {
   id: number; name: string; monthlyAmount: number; annualIncrease: number; startMonth: Month; endMonth: Month | null; accountId: number | null;
@@ -118,14 +120,18 @@ export async function getBalances(): Promise<Map<number, number>> {
 }
 
 export async function getPlanned(): Promise<Planned[]> {
-  const [list, spent] = await Promise.all([
+  const [list, spent, inst] = await Promise.all([
     q<Row[]>(sb().from("planned_expenses").select("*").order("end_month").order("id")),
     q<Row[]>(sb().from("planned_spent").select("planned_expense_id,spent")),
+    q<Row[]>(sb().from("planned_installments").select("planned_expense_id,month,amount,paid_amount").order("month")),
   ]);
   const sp = new Map(spent.map((r) => [n(r.planned_expense_id), n(r.spent)]));
   return list.map((r) => ({
     id: n(r.id), name: s(r.name), icon: s(r.icon), totalAmount: n(r.total_amount), startMonth: s(r.start_month), endMonth: s(r.end_month),
     note: ns(r.note), spent: sp.get(n(r.id)) ?? 0,
+    installments: new Map(
+      inst.filter((x) => n(x.planned_expense_id) === n(r.id)).map((x) => [s(x.month), { amount: n(x.amount), paid: nn(x.paid_amount) }]),
+    ),
   }));
 }
 
@@ -256,14 +262,61 @@ export const saveExpense = (fd: FormData) => run(() =>
 export const deleteExpense = (id: number) => remove("expenses", id);
 
 // Spese prevedibili
+const monthsFrom = (a: Month, b: Month) => {
+  const out: Month[] = [];
+  for (let m = a; monthIndex(m) <= monthIndex(b) && out.length < 600; m = addMonths(m, 1)) out.push(m);
+  return out;
+};
+
+/** Salva le rate di una spesa: aggiorna gli importi, mantiene i versamenti già segnati, toglie i mesi rimossi. */
+async function writeInstallments(plannedId: number, amounts: Map<Month, number>) {
+  const existing = await q<Row[]>(sb().from("planned_installments").select("month").eq("planned_expense_id", plannedId));
+  for (const r of existing)
+    if (!amounts.has(s(r.month))) await q(sb().from("planned_installments").delete().eq("planned_expense_id", plannedId).eq("month", s(r.month)));
+  if (amounts.size)
+    await q(sb().from("planned_installments").upsert(
+      [...amounts].map(([month, amount]) => ({ planned_expense_id: plannedId, month, amount })),
+      { onConflict: "planned_expense_id,month" },
+    ));
+}
+
 export const savePlanned = (fd: FormData) => run(async () => {
+  const start = month(fd, "startMonth", "Mese di inizio non valido");
+  const end = month(fd, "endMonth", "Mese di fine non valido");
+  if (monthIndex(end) < monthIndex(start)) throw new InputError("Il mese di fine deve essere uguale o successivo a quello di inizio");
+  const months = monthsFrom(start, end);
+  let amounts: Map<Month, number>;
+  if (fd.get("custom") === "1") {
+    // rate personalizzate: un importo per mese (i mesi a zero non hanno rata)
+    amounts = new Map();
+    for (const m of months) {
+      const v = parseAmount(str(fd, `rata_${m}`) || "0");
+      if (v == null || v < 0) throw new InputError(`Importo non valido per ${m}`);
+      if (v > 0) amounts.set(m, v);
+    }
+    if (!amounts.size) throw new InputError("Inserisci almeno una rata");
+  } else amounts = equalSplit(amount(fd, "totalAmount"), months);
   const v = {
-    name: name(fd), icon: oneOf(str(fd, "icon"), PLANNED_ICONS, "calendar-clock"), total_amount: amount(fd, "totalAmount"),
-    start_month: month(fd, "startMonth", "Mese di inizio non valido"), end_month: month(fd, "endMonth", "Mese di fine non valido"), note: str(fd, "note") || null,
+    name: name(fd), icon: oneOf(str(fd, "icon"), PLANNED_ICONS, "calendar-clock"),
+    total_amount: [...amounts.values()].reduce((a, x) => a + x, 0),
+    start_month: start, end_month: end, note: str(fd, "note") || null,
   };
-  if (monthIndex(v.end_month) < monthIndex(v.start_month)) throw new InputError("Il mese di fine deve essere uguale o successivo a quello di inizio");
-  await save("planned_expenses", optId(fd, "id"), v);
+  let id = optId(fd, "id");
+  if (id) await q(sb().from("planned_expenses").update(v).eq("id", id));
+  else id = n((await q<Row[]>(sb().from("planned_expenses").insert(v).select("id")))[0].id);
+  await writeInstallments(id, amounts);
 });
+
+/** Segna una rata come versata (con l'importo versato) o, con paid = null, come non versata. */
+export const payInstallment = (p: Planned, m: Month, fd: FormData | null) => run(async () => {
+  const paid = fd ? amount(fd, "paid") : null;
+  if (p.installments.size === 0) {
+    // spesa senza rate salvate: prima si creano le rate uguali
+    await writeInstallments(p.id, equalSplit(p.totalAmount, monthsFrom(p.startMonth, p.endMonth)));
+  }
+  await q(sb().from("planned_installments").update({ paid_amount: paid }).eq("planned_expense_id", p.id).eq("month", m));
+});
+
 export const deletePlanned = (id: number) => remove("planned_expenses", id);
 
 // Lungo termine

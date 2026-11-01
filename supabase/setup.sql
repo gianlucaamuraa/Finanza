@@ -94,6 +94,17 @@ create table if not exists public.investment_contributions (
 );
 create unique index if not exists contribution_unique on public.investment_contributions (investment_id, month);
 
+-- rate personalizzate delle spese prevedibili (un importo per mese)
+create table if not exists public.planned_installments (
+  id serial primary key,
+  planned_expense_id integer not null references public.planned_expenses(id) on delete cascade,
+  month text not null,
+  amount integer not null,
+  paid_amount integer
+);
+alter table public.planned_installments add column if not exists paid_amount integer;
+create unique index if not exists installment_unique on public.planned_installments (planned_expense_id, month);
+
 -- aumento annuo del versamento PAC (aggiunto dopo la prima versione)
 alter table public.investments add column if not exists annual_increase integer not null default 0;
 
@@ -113,7 +124,7 @@ begin
 
   foreach t in array array[
     'settings', 'accounts', 'categories', 'incomes', 'allocations',
-    'planned_expenses', 'expenses', 'investments', 'investment_contributions'
+    'planned_expenses', 'expenses', 'investments', 'investment_contributions', 'planned_installments'
   ] loop
     execute format('alter table public.%I add column if not exists user_id uuid references auth.users(id) on delete cascade', t);
     execute format('update public.%I set user_id = %L where user_id is null', t, owner_id);

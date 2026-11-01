@@ -1,8 +1,9 @@
 import { useState } from "react";
 import * as A from "@/api";
 import { ACCOUNT_COLORS, ACCOUNT_ICONS, CATEGORY_ICONS, PLANNED_ICONS } from "@/lib/icon-keys";
-import { MESI_LUNGHI, monthLabel, monthsInclusive, type Month } from "@/lib/dates";
+import { MESI_LUNGHI, addMonths, monthLabel, type Month } from "@/lib/dates";
 import { eur, parseAmount, toInput } from "@/lib/money";
+import { equalSplit, type Installment } from "@/lib/calc";
 import { ActionForm, AmountInput, ConfirmButton, Field, Submit } from "./form";
 import { Icon } from "./Icon";
 
@@ -170,18 +171,16 @@ export function ExpenseForm({
 
 // ---------- Spesa prevedibile ----------
 
-export function PlannedForm({ defaultStart, initial }: { defaultStart: Month; initial?: { id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null } }) {
-  const [amount, setAmount] = useState(initial ? toInput(initial.totalAmount) : "");
+type PlannedInit = { id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null; installments: Map<Month, Installment> };
+
+export function PlannedForm({ defaultStart, initial }: { defaultStart: Month; initial?: PlannedInit }) {
   return (
     <ActionForm action={A.savePlanned}>
       <Hidden name="id" value={initial?.id} />
       <Field label="Nome" htmlFor="name">
         <input id="name" name="name" className="input" defaultValue={initial?.name} placeholder="es. Assicurazione auto" required maxLength={80} />
       </Field>
-      <Field label="Importo totale (€)" htmlFor="totalAmount">
-        <AmountInput name="totalAmount" defaultValue={amount} onValue={setAmount} />
-      </Field>
-      <PlannedRange amount={amount} initial={initial} defaultStart={defaultStart} />
+      <PlannedAmounts initial={initial} defaultStart={defaultStart} />
       <div className="field">
         <span className="label">Icona</span>
         <IconPicker name="icon" icons={PLANNED_ICONS} defaultValue={initial?.icon} />
@@ -195,23 +194,83 @@ export function PlannedForm({ defaultStart, initial }: { defaultStart: Month; in
   );
 }
 
-/** Mesi di inizio/fine con calcolo della rata in tempo reale. */
-function PlannedRange({ amount, initial, defaultStart }: { amount: string; initial?: { startMonth: Month; endMonth: Month }; defaultStart: Month }) {
+const monthsBetween = (a: Month, b: Month) => {
+  const out: Month[] = [];
+  for (let m = a; m <= b && out.length < 600; m = addMonths(m, 1)) out.push(m);
+  return out;
+};
+
+/** Importo totale, mesi e rate: uguali (totale ÷ mesi) oppure personalizzate mese per mese. */
+function PlannedAmounts({ initial, defaultStart }: { initial?: PlannedInit; defaultStart: Month }) {
   const [start, setStart] = useState(initial?.startMonth ?? defaultStart);
   const [end, setEnd] = useState(initial?.endMonth ?? `${defaultStart.slice(0, 4)}-12`);
-  const cents = parseAmount(amount);
-  const n = start && end ? monthsInclusive(start, end) : 0;
+  const [total, setTotal] = useState(initial ? toInput(initial.totalAmount) : "");
+  // rate personalizzate se gli importi salvati non sono una semplice divisione in parti uguali
+  const [custom, setCustom] = useState(() => {
+    if (!initial || initial.installments.size === 0) return false;
+    const eq = equalSplit(initial.totalAmount, monthsBetween(initial.startMonth, initial.endMonth));
+    return eq.size !== initial.installments.size || [...eq].some(([m, v]) => initial.installments.get(m)?.amount !== v);
+  });
+  const [rates, setRates] = useState<Record<Month, string>>(() =>
+    Object.fromEntries([...(initial?.installments ?? new Map<Month, Installment>())].map(([m, v]) => [m, toInput(v.amount)])),
+  );
+  const hasSaved = !!initial && initial.installments.size > 0;
+  const months = start && end && start <= end ? monthsBetween(start, end) : [];
+  const n = months.length;
+  const cents = parseAmount(total);
+  const equal = n > 0 && cents != null ? Math.round(cents / n) : 0;
+  const rateOf = (m: Month) => rates[m] ?? (hasSaved ? "0" : equal ? toInput(equal) : "");
+  const customTotal = months.reduce((a, m) => a + (parseAmount(rateOf(m)) ?? 0), 0);
+
   return (
     <>
+      {!custom && (
+        <Field label="Importo totale (€)" htmlFor="totalAmount">
+          <AmountInput name="totalAmount" defaultValue={total} onValue={setTotal} />
+        </Field>
+      )}
       <MonthPicker name="startMonth" label="Mese di inizio" defaultValue={start} onChange={setStart} />
       <MonthPicker name="endMonth" label="Mese di fine" defaultValue={end} onChange={setEnd} />
-      <div className="calc">
-        <div>
-          <span>Rata mensile</span>
-          <small>{n > 0 ? `${n} ${n === 1 ? "rata" : "rate mensili"}` : "Date non valide"}</small>
-        </div>
-        <b className="num">{n > 0 && cents != null ? eur(Math.round(cents / n), 2) : "—"}</b>
+      <div className="field">
+        <label className="toggle">
+          Rate personalizzate (importo diverso per mese)
+          <input type="checkbox" checked={custom} onChange={(e) => setCustom(e.target.checked)} />
+        </label>
       </div>
+      <Hidden name="custom" value={custom ? "1" : "0"} />
+      {custom ? (
+        <>
+          <div className="rates">
+            {months.map((m) => (
+              <label key={m}>
+                <span>{monthLabel(m, false)}</span>
+                <input
+                  name={`rata_${m}`}
+                  className="input num"
+                  inputMode="decimal"
+                  value={rateOf(m)}
+                  onChange={(e) => setRates((r) => ({ ...r, [m]: e.target.value }))}
+                />
+              </label>
+            ))}
+          </div>
+          <div className="calc">
+            <div>
+              <span>Totale</span>
+              <small>{n} {n === 1 ? "rata" : "rate"}</small>
+            </div>
+            <b className="num">{eur(customTotal, 2)}</b>
+          </div>
+        </>
+      ) : (
+        <div className="calc">
+          <div>
+            <span>Rata mensile</span>
+            <small>{n > 0 ? `${n} ${n === 1 ? "rata" : "rate mensili"} uguali` : "Date non valide"}</small>
+          </div>
+          <b className="num">{n > 0 && cents != null ? eur(equal, 2) : "—"}</b>
+        </div>
+      )}
     </>
   );
 }

@@ -52,13 +52,28 @@ Variabili d'ambiente:
 | `APP_PASSWORD` | Password per accedere all'app |
 | `AUTH_SECRET` | Segreto di almeno 32 caratteri (`openssl rand -hex 32`) |
 
-## Pubblicazione (consigliata: Vercel + Neon)
+## Pubblicazione (Supabase + Vercel)
 
-1. Crea un database gratuito su [Neon](https://neon.tech) o [Supabase](https://supabase.com) e copia la stringa di connessione.
-2. Su [Vercel](https://vercel.com) importa questo repository.
-3. Imposta le tre variabili d'ambiente.
-4. Avvia il deploy. Il comando `build` applica da solo le migrazioni al database.
-5. Dal telefono apri l'indirizzo, poi scegli "Aggiungi alla schermata Home": l'app si apre a schermo intero.
+Supabase ospita il database, Vercel ospita l'app. Entrambi sono gratuiti per un uso personale.
+
+### 1. Database su Supabase
+1. Su [supabase.com](https://supabase.com) crea un nuovo progetto, scegli la regione Europa (es. Frankfurt) e annota la password del database.
+2. Apri **Connect** in alto, sezione **Connection string**, e copia la stringa **Transaction pooler** (porta `6543`).
+   Ha questa forma: `postgresql://postgres.xxxx:[PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:6543/postgres`
+3. Sostituisci `[PASSWORD]` con la password del database.
+
+Usa il *pooler* e non la "Direct connection": quella funziona solo con IPv6, che Vercel non supporta.
+
+### 2. App su Vercel
+1. Su [vercel.com](https://vercel.com) importa questo repository.
+2. In **Environment Variables** inserisci:
+   - `DATABASE_URL`: la stringa di Supabase del passo 1
+   - `APP_PASSWORD`: la password con cui entrerai nell'app
+   - `AUTH_SECRET`: un testo casuale di almeno 32 caratteri (per esempio da `openssl rand -hex 32`)
+3. Avvia il deploy. Il comando `build` crea da solo le tabelle su Supabase e inserisce le categorie iniziali.
+4. Dal telefono apri l'indirizzo `.vercel.app`, poi scegli "Aggiungi alla schermata Home".
+
+Funziona allo stesso modo con qualsiasi altro Postgres (es. Neon): basta cambiare `DATABASE_URL`.
 
 ## Comandi utili
 

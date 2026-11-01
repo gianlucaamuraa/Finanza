@@ -25,7 +25,9 @@ async function main() {
     console.warn("[migrate] DATABASE_URL non impostata: migrazione saltata.");
     return;
   }
-  const pg = postgres(url, { max: 1, prepare: false, onnotice: () => {} });
+  const host = new URL(url).hostname;
+  const ssl = host === "localhost" || host === "127.0.0.1" ? false : ("require" as const);
+  const pg = postgres(url, { max: 1, prepare: false, ssl, onnotice: () => {} });
   const db = drizzle(pg, { schema });
   await migrate(db, { migrationsFolder: "./drizzle" });
 

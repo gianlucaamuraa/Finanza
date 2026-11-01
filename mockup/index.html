@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Finanza – Mockup mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#ffffff; --text:#14171f; --muted:#6b7280; --line:#e6e8ec;
+    --accent:#0f766e; --accent-soft:#e6f4f2; --pos:#15803d; --neg:#b91c1c; --warn:#b45309;
+    --c1:#0f766e; --c2:#2563eb; --c3:#7c3aed; --c4:#d97706; --c5:#db2777; --c6:#64748b;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:Inter,system-ui,-apple-system,sans-serif;background:#dfe3e8;color:var(--text);
+       display:flex;justify-content:center;align-items:center;min-height:100vh;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* Telefono: cornice su desktop, schermo intero su mobile */
+  .phone{width:390px;height:844px;background:var(--bg);border-radius:44px;overflow:hidden;position:relative;
+         box-shadow:0 0 0 10px #111,0 30px 60px rgba(0,0,0,.25);display:flex;flex-direction:column}
+  @media (max-width:500px){
+    body{background:var(--bg);align-items:stretch}
+    .phone{width:100%;height:100vh;height:100dvh;border-radius:0;box-shadow:none}
+  }
+  .statusbar{height:44px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 28px;
+             font-size:14px;font-weight:600;padding-top:env(safe-area-inset-top)}
+  @media (max-width:500px){.statusbar{display:none}}
+
+  header.top{flex:none;padding:8px 20px 12px;display:flex;justify-content:space-between;align-items:center;
+             padding-top:max(8px,env(safe-area-inset-top))}
+  header.top h1{font-size:26px;font-weight:700;letter-spacing:-.02em}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:600;font-size:14px}
+
+  main{flex:1;overflow-y:auto;padding:0 16px 88px;scrollbar-width:none}
+  main::-webkit-scrollbar{display:none}
+  .view{display:none;animation:fade .2s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+  .card h3{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;
+           display:flex;justify-content:space-between;align-items:center}
+  .card h3 a{text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600;text-decoration:none;font-size:13px;cursor:pointer}
+  .hero{background:linear-gradient(135deg,#0f766e,#115e59);color:#fff;border:none}
+  .hero .label{font-size:13px;opacity:.8}
+  .hero .big{font-size:34px;font-weight:700;letter-spacing:-.02em;margin:4px 0 12px}
+  .hero .row{display:flex;gap:10px}
+  .hero .pill{flex:1;background:rgba(255,255,255,.12);border-radius:12px;padding:10px}
+  .hero .pill span{display:block;font-size:11px;opacity:.8}
+  .hero .pill b{font-size:15px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .grid2 .card{margin:0}
+  .kpi .v{font-size:20px;font-weight:700;letter-spacing:-.01em}
+  .kpi .s{font-size:12px;color:var(--muted);margin-top:2px}
+  .kpi .t{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
+
+  .monthbar{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);
+            border-radius:12px;padding:6px;margin-bottom:12px}
+  .monthbar button{width:36px;height:36px;border:none;background:var(--bg);border-radius:10px;font-size:18px;cursor:pointer;color:var(--text)}
+  .monthbar b{font-size:15px}
+
+  .stack{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:4px 0 12px;background:var(--line)}
+  .stack i{display:block;height:100%}
+  .legend{display:grid;gap:8px}
+  .legend div{display:flex;align-items:center;gap:8px;font-size:14px}
+  .legend .dot{width:10px;height:10px;border-radius:3px;flex:none}
+  .legend .amt{margin-left:auto;font-weight:600}
+  .legend .pct{color:var(--muted);font-size:12px;width:38px;text-align:right}
+
+  .list .item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .list .item:last-child{border-bottom:none;padding-bottom:0}
+  .list .item:first-child{padding-top:0}
+  .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;flex:none}
+  .item .main{flex:1;min-width:0}
+  .item .main b{display:block;font-size:15px;font-weight:600}
+  .item .main small{color:var(--muted);font-size:12px}
+  .item .right{text-align:right;font-weight:600;font-size:15px}
+  .item .right small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+
+  .income{display:flex;align-items:center;gap:12px;background:var(--accent-soft);border-radius:12px;padding:14px;margin-bottom:14px}
+  .income .ico{background:#fff}
+  .income .main{flex:1}
+  .income .main b{font-size:15px;display:block}
+  .income .right{font-size:20px;font-weight:700;color:var(--pos);white-space:nowrap}
+
+  .remaining{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:12px;background:#fff7ed;
+             color:var(--warn);font-size:14px;font-weight:600;margin-top:14px}
+  .remaining.ok{background:var(--accent-soft);color:var(--accent)}
+
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;padding:8px 14px;border-radius:20px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:600;cursor:pointer;color:var(--text)}
+  .chip.on{background:var(--text);color:#fff;border-color:var(--text)}
+
+  .progress{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:10px}
+  .progress i{display:block;height:100%;background:var(--accent);border-radius:3px}
+  .exp-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
+  .exp-head{display:flex;gap:12px;align-items:center}
+  .exp-head .main{flex:1}
+  .exp-head .main b{font-size:16px;display:block}
+  .exp-head .main small{color:var(--muted);font-size:12px}
+  .rata{text-align:right}
+  .rata b{font-size:18px;display:block}
+  .rata small{font-size:11px;color:var(--muted)}
+  .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--accent-soft);color:var(--accent);margin-left:6px;vertical-align:middle}
+  .tag.done{background:#eef2ff;color:#4338ca}
+  .tag.next{background:#fff7ed;color:var(--warn)}
+
+  /* Grafico a barre */
+  .bars{display:flex;align-items:flex-end;gap:6px;height:130px;padding-top:8px}
+  .bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;cursor:pointer}
+  .bars .b i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:var(--accent);min-height:3px;transition:opacity .15s}
+  .bars .b.plan i{background:repeating-linear-gradient(45deg,#99d5cd,#99d5cd 3px,#c7e9e4 3px,#c7e9e4 6px)}
+  .bars .b span{font-size:10px;color:var(--muted)}
+  .bars .b.sel i{outline:2px solid var(--text);outline-offset:1px}
+
+  .months{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .months .m{background:var(--bg);border-radius:12px;padding:10px;text-align:left}
+  .months .m span{display:block;font-size:12px;color:var(--muted)}
+  .months .m b{font-size:15px}
+  .months .m.plan{background:transparent;border:1px dashed #b6c2cf}
+  .months .m.plan b{color:var(--muted)}
+  .months .m.zero b{color:#c0c6cf}
+
+  .yearrow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .yearrow:last-child{border:none;padding-bottom:0}
+  .yearrow b{font-weight:600}
+  .yearrow .bar{flex:1;margin:0 12px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+  .yearrow .bar i{display:block;height:100%;background:var(--accent)}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border-radius:14px;border:none;
+       background:var(--text);color:#fff;font:600 15px Inter,sans-serif;cursor:pointer;margin-bottom:12px}
+  .btn.ghost{background:var(--card);color:var(--text);border:1px solid var(--line)}
+
+  /* Barra di navigazione inferiore */
+  nav.tabs{flex:none;display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-top:1px solid var(--line);
+           padding:8px 6px calc(10px + env(safe-area-inset-bottom))}
+  nav.tabs button{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+                  font:500 11px Inter,sans-serif;color:var(--muted);cursor:pointer;padding:4px 0}
+  nav.tabs button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  nav.tabs button.on{color:var(--accent);font-weight:600}
+  .phone-pad{height:8px;flex:none;background:rgba(255,255,255,.95)}
+  @media (max-width:500px){.phone-pad{display:none}}
+
+  /* Foglio modale */
+  .sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+  .sheet-bg.open{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:22px 22px 0 0;padding:10px 20px calc(20px + env(safe-area-inset-bottom));
+         transform:translateY(100%);transition:transform .25s ease;z-index:11;max-height:88%;overflow-y:auto}
+  .sheet.open{transform:none}
+  .sheet .grab{width:40px;height:5px;background:var(--line);border-radius:3px;margin:0 auto 14px}
+  .sheet h2{font-size:20px;margin-bottom:16px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+  .field input,.field select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font:500 16px Inter,sans-serif;background:var(--bg);color:var(--text)}
+  .field-row{display:flex;gap:10px}
+  .field-row .field{flex:1;min-width:0}
+  .field input[type=month]{min-width:0;-webkit-appearance:none;appearance:none}
+  .calc{background:var(--accent-soft);border-radius:14px;padding:14px;margin:4px 0 16px;display:flex;justify-content:space-between;align-items:center}
+  .calc span{font-size:13px;color:var(--accent);font-weight:600}
+  .calc b{font-size:22px;color:var(--accent)}
+  .calc small{display:block;font-size:12px;color:var(--accent);opacity:.8;font-weight:500}
+
+  .note{font-size:12px;color:var(--muted);text-align:center;margin:4px 0 16px}
+  .fab{position:absolute;right:20px;bottom:96px;width:56px;height:56px;border-radius:18px;background:var(--accent);color:#fff;border:none;
+       font-size:28px;box-shadow:0 8px 20px rgba(15,118,110,.4);cursor:pointer;z-index:5;display:none}
+  .fab.show{display:block}
+  @media (max-width:500px){.fab{bottom:calc(84px + env(safe-area-inset-bottom))}}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <div class="statusbar"><span>9:41</span><span>●●● 100%</span></div>
+  <header class="top">
+    <h1 id="title">Dashboard</h1>
+    <div class="avatar">GA</div>
+  </header>
+
+  <main id="scroller">
+    <!-- DASHBOARD -->
+    <section class="view active" id="v-dashboard">
+      <div class="card hero">
+        <div class="label">Patrimonio totale · Novembre 2026</div>
+        <div class="big num" id="d-total"></div>
+        <div class="row">
+          <div class="pill"><span>Liquidità</span><b class="num" id="d-liq"></b></div>
+          <div class="pill"><span>PAC investito</span><b class="num" id="d-pac"></b></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card kpi"><div class="t">Stipendio novembre</div><div class="v num pos" id="d-sal"></div><div class="s">ripartito al 100%</div></div>
+        <div class="card kpi"><div class="t">Da accantonare</div><div class="v num" id="d-acc"></div><div class="s" id="d-acc-s"></div></div>
+      </div>
+
+      <div class="card">
+        <h3>Ripartizione stipendio <a onclick="go('movimenti')">Dettagli</a></h3>
+        <div class="stack" id="d-stack"></div>
+        <div class="legend" id="d-legend"></div>
+      </div>
+
+      <div class="card">
+        <h3>Prossime scadenze <a onclick="go('spese')">Tutte</a></h3>
+        <div class="list" id="d-due"></div>
+      </div>
+
+      <div class="card">
+        <h3>PAC 2026 <a onclick="go('lungo')">Apri</a></h3>
+        <div class="bars" id="d-bars"></div>
+        <div class="exp-meta"><span>Versato quest'anno: <b class="num" id="d-pac-y"></b></span><span>Obiettivo: € 2.400</span></div>
+      </div>
+    </section>
+
+    <!-- MOVIMENTI -->
+    <section class="view" id="v-movimenti">
+      <div class="monthbar"><button onclick="shiftMonth(-1)">‹</button><b id="m-month"></b><button onclick="shiftMonth(1)">›</button></div>
+      <div class="card">
+        <h3>Entrata</h3>
+        <div class="income">
+          <div class="ico">💼</div>
+          <div class="main"><b>Stipendio</b><small style="color:var(--muted);font-size:12px">accreditato il 27</small></div>
+          <div class="right num" id="m-sal"></div>
+        </div>
+        <h3>Ripartizione <a onclick="openSheet('sh-mov')">+ Aggiungi</a></h3>
+        <div class="list" id="m-split"></div>
+        <div class="remaining" id="m-rem"></div>
+      </div>
+      <div class="card">
+        <h3>Conti e contanti <a onclick="openSheet('sh-acc')">Gestisci</a></h3>
+        <div class="list" id="m-acc"></div>
+      </div>
+      <button class="btn ghost" onclick="openSheet('sh-mov')">Copia ripartizione dal mese precedente</button>
+    </section>
+
+    <!-- SPESE PREVEDIBILI -->
+    <section class="view" id="v-spese">
+      <div class="card hero">
+        <div class="label">Accantonamento mensile totale</div>
+        <div class="big num" id="s-tot"></div>
+        <div class="row">
+          <div class="pill"><span>Spese attive</span><b id="s-n"></b></div>
+          <div class="pill"><span>Già accantonato</span><b class="num" id="s-acc"></b></div>
+        </div>
+      </div>
+      <div class="chips" id="s-chips">
+        <button class="chip on" data-f="all">Tutte</button>
+        <button class="chip" data-f="active">In corso</button>
+        <button class="chip" data-f="future">Future</button>
+        <button class="chip" data-f="done">Concluse</button>
+      </div>
+      <div id="s-list"></div>
+    </section>
+
+    <!-- LUNGO TERMINE -->
+    <section class="view" id="v-lungo">
+      <div class="card hero">
+        <div class="label">PAC · Totale versato</div>
+        <div class="big num" id="l-tot"></div>
+        <div class="row">
+          <div class="pill"><span>Rata attuale</span><b class="num">€ 200/mese</b></div>
+          <div class="pill"><span>Dal</span><b>Gen 2025</b></div>
+        </div>
+      </div>
+      <div class="chips" id="l-years"></div>
+      <div class="card">
+        <h3><span id="l-yt"></span><span class="num" style="color:var(--text);text-transform:none" id="l-ysum"></span></h3>
+        <div class="bars" id="l-bars"></div>
+        <div class="exp-meta"><span>■ versato</span><span style="color:#5fb3a8">▨ pianificato</span></div>
+      </div>
+      <div class="card">
+        <h3>Mese per mese</h3>
+        <div class="months" id="l-months"></div>
+      </div>
+      <div class="card">
+        <h3>Riepilogo per anno</h3>
+        <div id="l-yearsum"></div>
+      </div>
+      <button class="btn" onclick="openSheet('sh-pac')">Modifica piano PAC</button>
+    </section>
+  </main>
+
+  <button class="fab" id="fab" onclick="fabAction()">+</button>
+
+  <nav class="tabs" id="tabs">
+    <button class="on" data-v="dashboard"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>Dashboard</button>
+    <button data-v="movimenti"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>Movimenti</button>
+    <button data-v="spese"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Prevedibili</button>
+    <button data-v="lungo"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-5 4 3 6-8"/><path d="M15 6h4v4"/></svg>Lungo termine</button>
+  </nav>
+  <div class="phone-pad"></div>
+
+  <!-- Fogli modali -->
+  <div class="sheet-bg" id="sheet-bg" onclick="closeSheets()"></div>
+
+  <div class="sheet" id="sh-exp">
+    <div class="grab"></div>
+    <h2>Nuova spesa prevedibile</h2>
+    <div class="field"><label>Nome</label><input value="Assicurazione casa"></div>
+    <div class="field"><label>Importo totale (€)</label><input id="f-amt" type="number" inputmode="decimal" value="480"></div>
+    <div class="field-row">
+      <div class="field"><label>Mese inizio</label><input id="f-start" type="month" value="2027-01"></div>
+      <div class="field"><label>Mese fine</label><input id="f-end" type="month" value="2027-12"></div>
+    </div>
+    <div class="calc"><div><span>Rata mensile</span><small id="f-n"></small></div><b class="num" id="f-rata"></b></div>
+    <button class="btn" onclick="closeSheets()">Salva spesa</button>
+  </div>
+
+  <div class="sheet" id="sh-mov">
+    <div class="grab"></div>
+    <h2>Aggiungi ripartizione</h2>
+    <div class="field"><label>Mese</label><input type="month" value="2026-11"></div>
+    <div class="field"><label>Destinazione</label>
+      <select><option>Conto Intesa</option><option>Conto Risparmio</option><option>Fineco (PAC)</option><option>Contanti</option><option>Fondo spese prevedibili</option></select></div>
+    <div class="field"><label>Importo (€)</label><input type="number" inputmode="decimal" value="150"></div>
+    <div class="field"><label>Nota (opzionale)</label><input placeholder="es. spesa extra"></div>
+    <button class="btn" onclick="closeSheets()">Salva</button>
+  </div>
+
+  <div class="sheet" id="sh-acc">
+    <div class="grab"></div>
+    <h2>Conti e contanti</h2>
+    <div class="list" id="acc-edit"></div>
+    <div class="field" style="margin-top:16px"><label>Nuovo conto</label><input placeholder="es. Conto Revolut"></div>
+    <button class="btn" onclick="closeSheets()">Aggiungi conto</button>
+  </div>
+
+  <div class="sheet" id="sh-pac">
+    <div class="grab"></div>
+    <h2>Piano PAC</h2>
+    <div class="field"><label>Nome</label><input value="PAC ETF All-World"></div>
+    <div class="field"><label>Versamento mensile (€)</label><input type="number" value="200"></div>
+    <div class="field-row">
+      <div class="field"><label>Dal</label><input type="month" value="2025-01"></div>
+      <div class="field"><label>Al</label><input type="month" value="2027-12"></div>
+    </div>
+    <p class="note">I mesi passati restano quelli effettivamente versati; i mesi futuri vengono pianificati con questo importo.</p>
+    <button class="btn" onclick="closeSheets()">Salva piano</button>
+  </div>
+</div>
+
+<script>
+const eur = (v,d=0) => '€ ' + v.toLocaleString('it-IT',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:'always'});
+const MESI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+const MESI_L = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+// ---- Dati di esempio ----
+const accounts = [
+  {name:'Conto Intesa', type:'Conto corrente', ico:'🏦', color:'var(--c2)', bal:3240},
+  {name:'Conto Risparmio', type:'Conto deposito', ico:'🐷', color:'var(--c3)', bal:8650},
+  {name:'Fondo spese prevedibili', type:'Conto dedicato', ico:'📅', color:'var(--c4)', bal:1890},
+  {name:'Fineco (PAC)', type:'Investimenti', ico:'📈', color:'var(--c1)', bal:0},
+  {name:'Contanti', type:'Portafoglio', ico:'💶', color:'var(--c5)', bal:180},
+];
+const salary = 2150;
+const splits = { // ripartizione per mese (yyyy-mm)
+  '2026-11': [['Conto Intesa',1125],['Fondo spese prevedibili',260],['Conto Risparmio',400],['Fineco (PAC)',200],['Contanti',165]],
+  '2026-10': [['Conto Intesa',1100],['Fondo spese prevedibili',260],['Conto Risparmio',350],['Fineco (PAC)',200],['Contanti',100]],
+  '2026-12': [['Conto Intesa',900],['Fondo spese prevedibili',260],['Fineco (PAC)',200]],
+};
+const expenses = [
+  {name:'Assicurazione auto', ico:'🚗', tot:720, s:[2026,1], e:[2026,12], due:'Dic 2026'},
+  {name:'Regali di Natale', ico:'🎁', tot:400, s:[2026,3], e:[2026,12], due:'Dic 2026'},
+  {name:'Bollo auto', ico:'🧾', tot:240, s:[2026,5], e:[2027,4], due:'Apr 2027'},
+  {name:'Vacanze estive', ico:'🏖️', tot:1500, s:[2026,9], e:[2027,7], due:'Lug 2027'},
+  {name:'Revisione caldaia', ico:'🔧', tot:120, s:[2027,1], e:[2027,6], due:'Giu 2027'},
+  {name:'Abbonamento palestra', ico:'🏋️', tot:360, s:[2025,10], e:[2026,9], due:'Set 2026'},
+];
+const NOW = [2026,11];
+const pac = {}; // anno -> 12 valori (null = pianificato)
+pac[2025] = [150,150,150,150,150,150,150,0,150,200,200,200];
+pac[2026] = [200,200,200,200,250,200,200,200,200,200,200,null];
+pac[2027] = Array(12).fill(null);
+const PLAN = 200;
+
+// ---- Calcoli ----
+const idx = ([y,m]) => y*12 + (m-1);
+function expInfo(x){
+  const n = idx(x.e) - idx(x.s) + 1, rata = x.tot/n;
+  const paid = Math.max(0, Math.min(n, idx(NOW) - idx(x.s) + 1));
+  const st = paid===0 ? 'future' : paid>=n && idx(NOW)>idx(x.e) ? 'done' : 'active';
+  return {n, rata, paid, st};
+}
+const pacYear = y => pac[y].reduce((a,v)=>a+(v||0),0);
+const pacTotal = Object.keys(pac).reduce((a,y)=>a+pacYear(+y),0);
+
+// ---- Dashboard ----
+function renderDashboard(){
+  const liq = accounts.reduce((a,x)=>a+x.bal,0);
+  document.getElementById('d-total').textContent = eur(liq + pacTotal*1.07);
+  document.getElementById('d-liq').textContent = eur(liq);
+  document.getElementById('d-pac').textContent = eur(pacTotal);
+  document.getElementById('d-sal').textContent = eur(salary);
+  const act = expenses.map(expInfo).filter(i=>i.st==='active');
+  document.getElementById('d-acc').textContent = eur(act.reduce((a,i)=>a+i.rata,0)) ;
+  document.getElementById('d-acc-s').textContent = act.length + ' spese prevedibili';
+
+  const sp = splits['2026-11'];
+  document.getElementById('d-stack').innerHTML = sp.map(([n,v])=>`<i style="width:${v/salary*100}%;background:${accColor(n)}"></i>`).join('');
+  document.getElementById('d-legend').innerHTML = sp.map(([n,v])=>
+    `<div><span class="dot" style="background:${accColor(n)}"></span>${n}<span class="amt num">${eur(v)}</span><span class="pct num">${Math.round(v/salary*100)}%</span></div>`).join('');
+
+  const due = expenses.filter(x=>expInfo(x).st!=='done').sort((a,b)=>idx(a.e)-idx(b.e)).slice(0,3);
+  document.getElementById('d-due').innerHTML = due.map(x=>{const i=expInfo(x);
+    return `<div class="item"><div class="ico" style="background:var(--bg)">${x.ico}</div><div class="main"><b>${x.name}</b><small>scade ${x.due} · ${i.paid}/${i.n} rate</small></div><div class="right num">${eur(x.tot)}<small>${eur(i.rata)}/mese</small></div></div>`}).join('');
+
+  bars('d-bars', pac[2026]);
+  document.getElementById('d-pac-y').textContent = eur(pacYear(2026));
+}
+function accColor(n){ return (accounts.find(a=>a.name===n)||{color:'var(--c6)'}).color }
+function accIco(n){ return (accounts.find(a=>a.name===n)||{ico:'•'}).ico }
+
+function bars(id, vals, onSel, sel){
+  const max = Math.max(...vals.map(v=>v??PLAN), 1);
+  const el = document.getElementById(id);
+  el.innerHTML = vals.map((v,i)=>{const val=v??PLAN;
+    return `<div class="b ${v===null?'plan':''} ${sel===i?'sel':''}" data-i="${i}" title="${MESI[i]}: ${eur(val)}"><i style="height:${val/max*100}%"></i><span>${MESI[i][0]}</span></div>`}).join('');
+}
+
+// ---- Movimenti ----
+let curMonth = [2026,11];
+function shiftMonth(d){ let i=idx(curMonth)+d; curMonth=[Math.floor(i/12), i%12+1]; renderMovimenti(); }
+function renderMovimenti(){
+  const key = curMonth[0]+'-'+String(curMonth[1]).padStart(2,'0');
+  document.getElementById('m-month').textContent = MESI_L[curMonth[1]-1]+' '+curMonth[0];
+  const sp = splits[key] || [];
+  document.getElementById('m-sal').textContent = sp.length ? '+'+eur(salary) : '—';
+  document.getElementById('m-split').innerHTML = sp.length ? sp.map(([n,v])=>
+    `<div class="item"><div class="ico" style="background:var(--bg)">${accIco(n)}</div><div class="main"><b>${n}</b><small>trasferimento</small></div><div class="right num">${eur(v)}<small>${Math.round(v/salary*100)}%</small></div></div>`).join('')
+    : '<p class="note" style="margin:8px 0">Nessun movimento inserito per questo mese.</p>';
+  const rem = salary - sp.reduce((a,[,v])=>a+v,0);
+  const r = document.getElementById('m-rem');
+  r.style.display = sp.length ? 'flex' : 'none';
+  r.className = 'remaining' + (rem===0?' ok':'');
+  r.innerHTML = rem===0 ? '<span>✓ Stipendio ripartito completamente</span><span>€ 0</span>' : `<span>Da ripartire</span><span class="num">${eur(rem)}</span>`;
+  document.getElementById('m-acc').innerHTML = accounts.map(a=>
+    `<div class="item"><div class="ico" style="background:var(--bg)">${a.ico}</div><div class="main"><b>${a.name}</b><small>${a.type}</small></div><div class="right num">${a.name.includes('PAC')?eur(pacTotal):eur(a.bal)}</div></div>`).join('');
+  document.getElementById('acc-edit').innerHTML = accounts.map(a=>
+    `<div class="item"><div class="ico" style="background:var(--bg)">${a.ico}</div><div class="main"><b>${a.name}</b><small>${a.type}</small></div><div class="right" style="color:var(--muted)">✎</div></div>`).join('');
+}
+
+// ---- Spese prevedibili ----
+let filter='all';
+function renderSpese(){
+  const infos = expenses.map(x=>({x,i:expInfo(x)}));
+  const act = infos.filter(o=>o.i.st==='active');
+  document.getElementById('s-tot').textContent = eur(act.reduce((a,o)=>a+o.i.rata,0),2) ;
+  document.getElementById('s-n').textContent = act.length;
+  document.getElementById('s-acc').textContent = eur(act.reduce((a,o)=>a+o.i.rata*o.i.paid,0));
+  const tagFor = st => st==='active'?'<span class="tag">In corso</span>':st==='future'?'<span class="tag next">Futura</span>':'<span class="tag done">Conclusa</span>';
+  document.getElementById('s-list').innerHTML = infos.filter(o=>filter==='all'||o.i.st===filter).map(({x,i})=>`
+    <div class="card">
+      <div class="exp-head">
+        <div class="ico" style="background:var(--bg)">${x.ico}</div>
+        <div class="main"><b>${x.name}${tagFor(i.st)}</b><small>${MESI[x.s[1]-1]} ${x.s[0]} → ${MESI[x.e[1]-1]} ${x.e[0]} · ${i.n} rate</small></div>
+        <div class="rata"><b class="num">${eur(i.rata,2)}</b><small>al mese</small></div>
+      </div>
+      <div class="progress"><i style="width:${i.paid/i.n*100}%"></i></div>
+      <div class="exp-meta"><span class="num">${eur(i.rata*i.paid)} di ${eur(x.tot)}</span><span>${i.paid}/${i.n} rate</span></div>
+    </div>`).join('') || '<p class="note">Nessuna spesa in questa categoria.</p>';
+}
+document.getElementById('s-chips').onclick = e=>{
+  if(!e.target.dataset.f) return;
+  filter = e.target.dataset.f;
+  [...e.currentTarget.children].forEach(c=>c.classList.toggle('on',c===e.target));
+  renderSpese();
+};
+function calcRata(){
+  const amt = parseFloat(document.getElementById('f-amt').value)||0;
+  const [sy,sm] = document.getElementById('f-start').value.split('-').map(Number);
+  const [ey,em] = document.getElementById('f-end').value.split('-').map(Number);
+  const n = (ey*12+em)-(sy*12+sm)+1;
+  document.getElementById('f-rata').textContent = n>0 ? eur(amt/n,2) : '—';
+  document.getElementById('f-n').textContent = n>0 ? n+' rate mensili' : 'Date non valide';
+}
+['f-amt','f-start','f-end'].forEach(id=>document.getElementById(id).addEventListener('input',calcRata));
+
+// ---- Lungo termine ----
+let pacSel = 2026;
+function renderLungo(){
+  document.getElementById('l-tot').textContent = eur(pacTotal);
+  document.getElementById('l-years').innerHTML = Object.keys(pac).map(y=>`<button class="chip ${+y===pacSel?'on':''}" data-y="${y}">${y}</button>`).join('');
+  document.getElementById('l-yt').textContent = 'Versamenti ' + pacSel;
+  const v = pac[pacSel], planned = v.filter(x=>x===null).length;
+  document.getElementById('l-ysum').textContent = eur(pacYear(pacSel)) + (planned? ' + '+eur(planned*PLAN)+' pian.':'');
+  bars('l-bars', v);
+  document.getElementById('l-months').innerHTML = v.map((x,i)=>
+    `<div class="m ${x===null?'plan':''} ${x===0?'zero':''}"><span>${MESI_L[i]}</span><b class="num">${eur(x??PLAN)}</b></div>`).join('');
+  const maxY = Math.max(...Object.keys(pac).map(y=>pacYear(+y)+pac[y].filter(x=>x===null).length*PLAN));
+  document.getElementById('l-yearsum').innerHTML = Object.keys(pac).map(y=>{
+    const done = pacYear(+y), plan = pac[y].filter(x=>x===null).length*PLAN;
+    return `<div class="yearrow"><b>${y}</b><div class="bar"><i style="width:${(done)/maxY*100}%"></i></div><span class="num">${eur(done)}${plan?` <small style="color:var(--muted)">(+${eur(plan)})</small>`:''}</span></div>`}).join('');
+}
+document.getElementById('l-years').onclick = e=>{ if(e.target.dataset.y){ pacSel=+e.target.dataset.y; renderLungo(); } };
+
+// ---- Navigazione ----
+const TITLES = {dashboard:'Dashboard', movimenti:'Movimenti', spese:'Spese prevedibili', lungo:'Lungo termine'};
+let current='dashboard';
+function go(v){
+  current=v;
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active', s.id==='v-'+v));
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  document.getElementById('title').textContent = TITLES[v];
+  document.getElementById('fab').classList.toggle('show', v==='movimenti'||v==='spese');
+  document.getElementById('scroller').scrollTop = 0;
+  if(location.hash.slice(1)!==v) history.replaceState(null,'','#'+v);
+}
+document.getElementById('tabs').onclick = e=>{ const b=e.target.closest('button'); if(b) go(b.dataset.v); };
+function fabAction(){ openSheet(current==='spese'?'sh-exp':'sh-mov'); }
+function openSheet(id){ document.getElementById('sheet-bg').classList.add('open'); document.getElementById(id).classList.add('open'); if(id==='sh-exp') calcRata(); }
+function closeSheets(){ document.querySelectorAll('.sheet,.sheet-bg').forEach(s=>s.classList.remove('open')); }
+
+renderDashboard(); renderMovimenti(); renderSpese(); renderLungo();
+const start = location.hash.slice(1); go(TITLES[start]?start:'dashboard');
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(TITLES[h]&&h!==current) go(h);});
+</script>
+</body>
+</html>

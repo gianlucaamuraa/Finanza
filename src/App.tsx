@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "./supabase";
+import { configProblem, supabase } from "./supabase";
 import { queryClient } from "./queryClient";
 import { Sidebar, TabBar, TopBar } from "./components/Nav";
 import Dashboard from "./pages/Dashboard";
@@ -67,11 +67,12 @@ export function App() {
 function NotConfigured() {
   return (
     <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 20 }}>
-      <div className="card" style={{ maxWidth: 440 }}>
-        <div className="card-title">Configurazione mancante</div>
-        <p style={{ fontSize: 14, lineHeight: 1.5 }}>
-          L&apos;app è stata pubblicata senza i dati di Supabase. Su GitHub apri Settings → Secrets and variables → Actions → Variables
-          e aggiungi <b>SUPABASE_URL</b> e <b>SUPABASE_KEY</b>, poi rilancia la pubblicazione (Actions → Pubblica su GitHub Pages → Run workflow).
+      <div className="card" style={{ maxWidth: 460, borderColor: "#fecaca", background: "#fef2f2" }}>
+        <div className="card-title" style={{ color: "var(--neg)" }}>Configurazione da correggere</div>
+        <p style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 12 }}>{configProblem}</p>
+        <p className="note" style={{ margin: 0 }}>
+          Su GitHub: Settings → Secrets and variables → Actions → Variables. Correggi SUPABASE_URL e SUPABASE_KEY, poi
+          Actions → Pubblica su GitHub Pages → Run workflow.
         </p>
       </div>
     </main>

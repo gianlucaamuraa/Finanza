@@ -6,13 +6,16 @@ import "@fontsource-variable/inter";
 import "./styles.css";
 import { queryClient } from "./queryClient";
 import { App } from "./App";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <HashRouter>
-        <App />
-      </HashRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <HashRouter>
+          <App />
+        </HashRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

@@ -90,3 +90,14 @@ describe("investments", () => {
     expect(cells[10].kind).toBe("planned");
   });
 });
+
+import { normalizeUrl } from "../src/supabase";
+describe("supabase url", () => {
+  it("normalizes common mistakes", () => {
+    expect(normalizeUrl(" https://abc.supabase.co/ ").url).toBe("https://abc.supabase.co");
+    expect(normalizeUrl("abc.supabase.co").url).toBe("https://abc.supabase.co");
+    expect(normalizeUrl("https://abc.supabase.co/rest/v1/").url).toBe("https://abc.supabase.co");
+    expect(normalizeUrl("postgresql://u:p@h:6543/postgres").problem).toMatch(/Project URL/);
+    expect(normalizeUrl("").problem).toMatch(/Manca/);
+  });
+});

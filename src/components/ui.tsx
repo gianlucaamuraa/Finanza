@@ -1,8 +1,9 @@
-import Link from "next/link";
+import { Link } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MESI, addMonths, dayLabel, monthLabel, type Month } from "@/lib/dates";
 import { periodRange } from "@/lib/period";
 import { eur } from "@/lib/money";
+import { friendlyError } from "@/api";
 
 export type BarCell = { amount: number; kind: "recorded" | "linked" | "planned" | "missing" | "none" };
 
@@ -29,12 +30,12 @@ export function MonthNav({ period, payday, hrefFor }: { period: Month; payday: n
   const r = periodRange(period, payday);
   return (
     <div className="monthbar">
-      <Link href={hrefFor(addMonths(period, -1))} aria-label="Mese precedente"><ChevronLeft size={18} /></Link>
+      <Link to={hrefFor(addMonths(period, -1))} aria-label="Mese precedente"><ChevronLeft size={18} /></Link>
       <div>
         <b>{monthLabel(period)}</b>
         <small>{dayLabel(r.start)} – {dayLabel(r.end)}</small>
       </div>
-      <Link href={hrefFor(addMonths(period, 1))} aria-label="Mese successivo"><ChevronRight size={18} /></Link>
+      <Link to={hrefFor(addMonths(period, 1))} aria-label="Mese successivo"><ChevronRight size={18} /></Link>
     </div>
   );
 }
@@ -51,3 +52,13 @@ export function PageSkeleton() {
 }
 
 export const pctClass = (p: number) => (p > 1 ? "over" : p > 0.85 ? "warn" : "");
+
+export function LoadError({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  return (
+    <div className="card" style={{ borderColor: "#fecaca", background: "#fef2f2" }}>
+      <div className="card-title" style={{ color: "var(--neg)" }}>Impossibile caricare i dati</div>
+      <p style={{ fontSize: 14, marginBottom: 12 }}>{friendlyError(error)}</p>
+      {onRetry && <button type="button" className="btn ghost" style={{ marginBottom: 0 }} onClick={onRetry}>Riprova</button>}
+    </div>
+  );
+}

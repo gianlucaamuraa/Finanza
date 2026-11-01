@@ -1,30 +1,34 @@
-"use client";
-
-import { useActionState, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { createContext, useContext, useEffect, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
-import type { ActionState } from "@/app/actions";
+import type { ActionState } from "@/api";
 import { useSheetClose } from "./Sheet";
 
-type FormAction = (state: ActionState, fd: FormData) => Promise<ActionState>;
+const PendingCtx = createContext(false);
 
-/** Form collegato a una Server Action: mostra l'errore e chiude il foglio quando va a buon fine. */
-export function ActionForm({ action, children, onSuccess }: { action: FormAction; children: ReactNode; onSuccess?: () => void }) {
+/** Form che chiama un'azione: mostra l'errore e chiude il foglio quando va a buon fine. */
+export function ActionForm({ action, children, onSuccess }: { action: (fd: FormData) => Promise<ActionState>; children: ReactNode; onSuccess?: () => void }) {
   const close = useSheetClose();
-  const [state, formAction] = useActionState(action, null);
-  useEffect(() => {
-    if (state?.ok) (onSuccess ?? close)();
-  }, [state, close, onSuccess]);
+  const [state, setState] = useState<ActionState>(null);
+  const [pending, start] = useTransition();
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await action(fd);
+      setState(r);
+      if (r?.ok) (onSuccess ?? close)();
+    });
+  };
   return (
-    <form action={formAction}>
+    <form onSubmit={onSubmit} noValidate>
       {state && !state.ok && <div className="form-error" role="alert">{state.error}</div>}
-      {children}
+      <PendingCtx value={pending}>{children}</PendingCtx>
     </form>
   );
 }
 
 export function Submit({ children = "Salva", className = "btn", pendingText = "Salvataggio…" }: { children?: ReactNode; className?: string; pendingText?: string }) {
-  const { pending } = useFormStatus();
+  const pending = useContext(PendingCtx);
   return (
     <button type="submit" className={className} disabled={pending}>
       {pending ? pendingText : children}

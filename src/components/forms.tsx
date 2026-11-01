@@ -1,7 +1,5 @@
-"use client";
-
 import { useState } from "react";
-import * as A from "@/app/actions";
+import * as A from "@/api";
 import { ACCOUNT_COLORS, ACCOUNT_ICONS, CATEGORY_ICONS, PLANNED_ICONS } from "@/lib/icon-keys";
 import { MESI_LUNGHI, monthLabel, monthsInclusive, type Month } from "@/lib/dates";
 import { eur, parseAmount, toInput } from "@/lib/money";

@@ -1,9 +1,6 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation, useNavigate } from "react-router";
 import { ArrowLeftRight, CalendarRange, ChartLine, LayoutDashboard, LogOut, Settings, Wallet } from "lucide-react";
-import { logout } from "@/app/actions";
+import { signOut } from "@/api";
 
 const ITEMS = [
   { href: "/", label: "Dashboard", short: "Dashboard", icon: LayoutDashboard },
@@ -22,11 +19,11 @@ const TITLES: Record<string, string> = {
 const isOn = (path: string, href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
 export function TabBar() {
-  const path = usePathname();
+  const path = useLocation().pathname;
   return (
     <nav className="tabbar" aria-label="Navigazione">
       {ITEMS.map(({ href, short, icon: I }) => (
-        <Link key={href} href={href} className={isOn(path, href) ? "on" : ""}>
+        <Link key={href} to={href} className={isOn(path, href) ? "on" : ""}>
           <I size={24} strokeWidth={1.8} />
           {short}
         </Link>
@@ -36,7 +33,7 @@ export function TabBar() {
 }
 
 export function Sidebar() {
-  const path = usePathname();
+  const path = useLocation().pathname;
   return (
     <aside className="sidebar" aria-label="Navigazione">
       <div className="brand">
@@ -44,36 +41,49 @@ export function Sidebar() {
         Finanza
       </div>
       {ITEMS.map(({ href, label, icon: I }) => (
-        <Link key={href} href={href} className={isOn(path, href) ? "on" : ""}>
+        <Link key={href} to={href} className={isOn(path, href) ? "on" : ""}>
           <I size={20} strokeWidth={1.8} />
           {label}
         </Link>
       ))}
       <div className="spacer" />
-      <Link href="/impostazioni" className={isOn(path, "/impostazioni") ? "on" : ""}>
+      <Link to="/impostazioni" className={isOn(path, "/impostazioni") ? "on" : ""}>
         <Settings size={20} strokeWidth={1.8} />
         Impostazioni
       </Link>
-      <form action={logout}>
-        <button type="submit" className="link" style={{ padding: "10px 12px", color: "var(--muted)", fontSize: 15, fontWeight: 500, gap: 12 }}>
-          <LogOut size={20} strokeWidth={1.8} /> Esci
-        </button>
-      </form>
+      <LogoutButton className="link" style={{ padding: "10px 12px", color: "var(--muted)", fontSize: 15, fontWeight: 500, gap: 12 }} />
     </aside>
   );
 }
 
 export function TopBar() {
-  const path = usePathname();
+  const path = useLocation().pathname;
   const title = TITLES[path] ?? "Finanza";
   return (
     <header className="topbar">
       <h1>{title}</h1>
       {path !== "/impostazioni" && (
-        <Link href="/impostazioni" className="icon-btn" aria-label="Impostazioni">
+        <Link to="/impostazioni" className="icon-btn" aria-label="Impostazioni">
           <Settings size={20} strokeWidth={1.8} />
         </Link>
       )}
     </header>
+  );
+}
+
+export function LogoutButton({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      className={className}
+      style={style}
+      onClick={async () => {
+        await signOut();
+        navigate("/login", { replace: true });
+      }}
+    >
+      <LogOut size={style ? 20 : 16} strokeWidth={1.8} /> Esci
+    </button>
   );
 }

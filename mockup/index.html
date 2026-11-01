@@ -189,6 +189,17 @@
   .catgrid button span{font-size:20px}
   .catgrid button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
   .field input[type=date]{min-width:0;-webkit-appearance:none;appearance:none}
+  .daily{display:flex;align-items:center;gap:14px}
+  .daily .big{font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .daily .big small{font-size:15px;font-weight:600;color:var(--muted)}
+  .daily .days{margin-left:auto;text-align:center;background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:8px 12px;min-width:76px}
+  .daily .days b{display:block;font-size:24px;line-height:1.1}
+  .daily .days span{font-size:11px;font-weight:600}
+  .ticks{display:flex;gap:2px;margin:14px 0 6px}
+  .ticks i{flex:1;height:8px;border-radius:2px;background:var(--line)}
+  .ticks i.past{background:#9ca3af} .ticks i.today{background:var(--accent)}
+  .hint{font-size:13px;padding:10px 12px;border-radius:10px;margin-top:10px;background:#fff7ed;color:var(--warn);font-weight:500}
+  .hint.ok{background:var(--accent-soft);color:var(--accent)}
   .note{font-size:12px;color:var(--muted);text-align:center;margin:4px 0 16px}
   .fab{position:absolute;right:20px;bottom:96px;width:56px;height:56px;border-radius:18px;background:var(--accent);color:#fff;border:none;
        font-size:28px;box-shadow:0 8px 20px rgba(15,118,110,.4);cursor:pointer;z-index:5;display:none}
@@ -214,6 +225,17 @@
           <div class="pill"><span>Liquidità</span><b class="num" id="d-liq"></b></div>
           <div class="pill"><span>PAC investito</span><b class="num" id="d-pac"></b></div>
         </div>
+      </div>
+
+      <div class="card">
+        <h3>Quota giornaliera <a onclick="openSheet('sh-pay')">Stipendio il <span id="q-payday"></span> ✎</a></h3>
+        <div class="daily">
+          <div><div class="big num" id="q-val"></div><div class="kpi"><div class="s" id="q-sub"></div></div></div>
+          <div class="days"><b class="num" id="q-days"></b><span>giorni allo<br>stipendio</span></div>
+        </div>
+        <div class="ticks" id="q-ticks"></div>
+        <div class="exp-meta"><span id="q-from"></span><span id="q-to"></span></div>
+        <div class="hint" id="q-hint"></div>
       </div>
 
       <div class="grid2">
@@ -389,12 +411,22 @@
     <div class="field"><label>Categoria</label><div class="catgrid" id="f-cats"></div></div>
     <div class="field-row">
       <div class="field"><label>Conto</label><select id="f-acc"></select></div>
-      <div class="field"><label>Data</label><input type="date" value="2026-11-24"></div>
+      <div class="field"><label>Data</label><input type="date" value="2026-11-12"></div>
     </div>
     <div class="field"><label>Descrizione</label><input placeholder="es. Esselunga"></div>
     <div class="field"><label>Collega a spesa prevedibile (opzionale)</label>
       <select><option>— Nessuna —</option><option>Assicurazione auto</option><option>Regali di Natale</option><option>Bollo auto</option><option>Vacanze estive</option></select></div>
     <button class="btn" onclick="closeSheets()">Salva uscita</button>
+  </div>
+
+  <div class="sheet" id="sh-pay">
+    <div class="grab"></div>
+    <h2>Giorno dello stipendio</h2>
+    <div class="field"><label>Lo stipendio arriva il giorno</label><input id="f-payday" type="number" min="1" max="31" inputmode="numeric"></div>
+    <div class="field"><label>Conti da considerare per la quota</label>
+      <div class="list" id="f-qaccs"></div></div>
+    <p class="note">Quota giornaliera = quanto resta da spendere sui conti selezionati ÷ giorni che mancano al prossimo stipendio.</p>
+    <button class="btn" onclick="savePayday()">Salva</button>
   </div>
 
   <div class="sheet" id="sh-acc">
@@ -534,6 +566,9 @@ const outflows = { // [giorno, descrizione, categoria, conto, importo]
     [2,'Netflix','abbonamenti','Conto Intesa',13.99],[1,'Spotify','abbonamenti','Conto Intesa',10.99],
   ],
 };
+outflows['2026-11'].forEach(r=>r[0]=Math.ceil(r[0]/2)); // mockup: oggi = 12 novembre
+const TODAY = [2026,11,12];
+let PAYDAY = 27;
 const PREV_TOT = 742.30; // totale uscite ottobre (esempio)
 let movTab='stip', accFilter='Tutti';
 const monthKey = () => curMonth[0]+'-'+String(curMonth[1]).padStart(2,'0');
@@ -597,6 +632,39 @@ function renderDashSpend(){
   const b = document.getElementById('d-spent-bar'); b.style.width = Math.min(tot/bud,1)*100+'%'; b.className = barClass(tot/bud);
   document.getElementById('d-cats').innerHTML = catRows(catBreakdown(all), tot, 3);
 }
+
+// ---- Quota giornaliera ----
+function renderDaily(){
+  const [y,m,d] = TODAY;
+  const daysIn = (yy,mm)=>new Date(yy,mm,0).getDate();
+  // prossimo stipendio: questo mese se non ancora arrivato, altrimenti il mese dopo
+  let ny=y, nm=m; if(d>=PAYDAY){ nm++; if(nm>12){nm=1;ny++;} }
+  const next = new Date(ny,nm-1,Math.min(PAYDAY,daysIn(ny,nm)));
+  let py=ny, pm=nm-1; if(pm<1){pm=12;py--;}
+  const prev = new Date(py,pm-1,Math.min(PAYDAY,daysIn(py,pm)));
+  const today = new Date(y,m-1,d), DAY=864e5;
+  const left = Math.round((next-today)/DAY), period = Math.round((next-prev)/DAY), passed = period-left;
+  const all = outflows['2026-11'], spent = sum(all.map(r=>r[4]));
+  const accs = [...new Set(all.map(r=>r[3]))], avail = sum(accs.map(a=>budgetFor(a,'2026-11'))) - spent;
+  const quota = avail/left, avg = spent/passed;
+  document.getElementById('q-payday').textContent = PAYDAY;
+  document.getElementById('q-val').innerHTML = eur(quota,2)+' <small>/giorno</small>';
+  document.getElementById('q-sub').textContent = eur(avail,2)+' disponibili ÷ '+left+' giorni';
+  document.getElementById('q-days').textContent = left;
+  document.getElementById('q-ticks').innerHTML = Array.from({length:period},(_,i)=>`<i class="${i<passed-1?'past':i===passed-1?'today':''}"></i>`).join('');
+  const fmt = dt=>dt.getDate()+' '+MESI[dt.getMonth()];
+  document.getElementById('q-from').textContent = 'Stipendio '+fmt(prev);
+  document.getElementById('q-to').textContent = 'Prossimo '+fmt(next);
+  const h = document.getElementById('q-hint');
+  h.className = 'hint' + (avg<=quota?' ok':'');
+  h.textContent = avg<=quota
+    ? `✓ Finora spendi in media ${eur(avg,2)}/giorno: sei sotto la quota.`
+    : `Finora spendi in media ${eur(avg,2)}/giorno, più della quota: rallenta un po'.`;
+  document.getElementById('f-payday').value = PAYDAY;
+  document.getElementById('f-qaccs').innerHTML = accounts.filter(a=>!a.name.includes('PAC')).map(a=>
+    `<label class="item" style="cursor:pointer"><div class="ico" style="background:var(--bg)">${a.ico}</div><div class="main"><b>${a.name}</b></div><input type="checkbox" ${accs.includes(a.name)?'checked':''} style="width:20px;height:20px;accent-color:var(--accent)"></label>`).join('');
+}
+function savePayday(){ const v=parseInt(document.getElementById('f-payday').value); if(v>=1&&v<=31){PAYDAY=v; renderDaily();} closeSheets(); }
 
 // ---- Spese prevedibili ----
 let filter='all';
@@ -669,7 +737,7 @@ function fabAction(){ openSheet(current==='spese'?'sh-exp':movTab==='usc'?'sh-us
 function openSheet(id){ document.getElementById('sheet-bg').classList.add('open'); document.getElementById(id).classList.add('open'); if(id==='sh-exp') calcRata(); }
 function closeSheets(){ document.querySelectorAll('.sheet,.sheet-bg').forEach(s=>s.classList.remove('open')); }
 
-renderDashboard(); renderMovimenti(); renderSpese(); renderLungo(); renderUscite(); renderDashSpend();
+renderDashboard(); renderMovimenti(); renderSpese(); renderLungo(); renderUscite(); renderDashSpend(); renderDaily();
 const start = location.hash.slice(1); go(TITLES[start]?start:'dashboard');
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(TITLES[h]&&h!==current) go(h);});
 </script>

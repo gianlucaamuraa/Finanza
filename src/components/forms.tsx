@@ -281,7 +281,14 @@ const KINDS = [
   ["altro", "Altro"],
 ] as const;
 
-export function AccountForm({ initial, defaultColor }: { defaultColor?: string; initial?: { id: number; name: string; kind: string; icon: string; color: string; initialBalance: number; includeInQuota: boolean; archived: boolean } }) {
+export function AccountForm({ initial, defaultColor, balance }: {
+  defaultColor?: string;
+  balance?: number;
+  initial?: { id: number; name: string; kind: string; icon: string; color: string; initialBalance: number; includeInQuota: boolean; excludeFromNetWorth: boolean; archived: boolean };
+}) {
+  const current = initial ? (balance ?? initial.initialBalance) : 0;
+  // effetto dei movimenti registrati (ripartizioni − uscite): resta fisso, cambia solo il saldo iniziale
+  const movementsNet = initial ? current - initial.initialBalance : 0;
   return (
     <ActionForm action={A.saveAccount}>
       <Hidden name="id" value={initial?.id} />
@@ -295,9 +302,11 @@ export function AccountForm({ initial, defaultColor }: { defaultColor?: string; 
           ))}
         </select>
       </Field>
-      <Field label="Saldo iniziale (€)" htmlFor="initialBalance">
-        <input id="initialBalance" name="initialBalance" className="input num" inputMode="decimal" defaultValue={initial ? toInput(initial.initialBalance) : "0"} />
+      <Field label="Saldo attuale (€)" htmlFor="currentBalance">
+        <input id="currentBalance" name="currentBalance" className="input num" inputMode="decimal" defaultValue={toInput(current)} />
       </Field>
+      <Hidden name="movementsNet" value={movementsNet} />
+      <p className="note" style={{ marginTop: -6 }}>Scrivi quanto c&apos;è davvero sul conto: l&apos;app si allinea senza registrare spese.</p>
       <div className="field">
         <span className="label">Icona</span>
         <IconPicker name="icon" icons={ACCOUNT_ICONS} defaultValue={initial?.icon} />
@@ -316,6 +325,12 @@ export function AccountForm({ initial, defaultColor }: { defaultColor?: string; 
         <label className="toggle">
           Conta per la quota giornaliera
           <input type="checkbox" name="includeInQuota" defaultChecked={initial?.includeInQuota ?? false} />
+        </label>
+      </div>
+      <div className="field">
+        <label className="toggle">
+          Escludi dal patrimonio
+          <input type="checkbox" name="excludeFromNetWorth" defaultChecked={initial?.excludeFromNetWorth ?? false} />
         </label>
       </div>
       <Submit />

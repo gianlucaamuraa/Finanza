@@ -97,6 +97,9 @@ create unique index if not exists contribution_unique on public.investment_contr
 -- aumento annuo del versamento PAC (aggiunto dopo la prima versione)
 alter table public.investments add column if not exists annual_increase integer not null default 0;
 
+-- conti da non contare nel patrimonio (es. soldi già destinati a una rata)
+alter table public.accounts add column if not exists exclude_from_net_worth boolean not null default false;
+
 -- 2 + 3. Proprietario e regole di sicurezza ------------------------------
 
 do $$

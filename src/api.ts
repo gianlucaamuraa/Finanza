@@ -13,7 +13,7 @@ import { ACCOUNT_COLORS, ACCOUNT_ICONS, CATEGORY_ICONS, PLANNED_ICONS } from "./
 
 export type Account = {
   id: number; name: string; kind: string; icon: string; color: string; initialBalance: number;
-  includeInQuota: boolean; archived: boolean; sortOrder: number;
+  includeInQuota: boolean; excludeFromNetWorth: boolean; archived: boolean; sortOrder: number;
 };
 export type Category = { id: number; name: string; icon: string; archived: boolean; sortOrder: number };
 export type Income = { id: number; period: Month; date: string; description: string; amount: number };
@@ -38,7 +38,7 @@ const nn = (v: unknown) => (v == null ? null : Number(v));
 
 const toAccount = (r: Row): Account => ({
   id: n(r.id), name: s(r.name), kind: s(r.kind), icon: s(r.icon), color: s(r.color), initialBalance: n(r.initial_balance),
-  includeInQuota: !!r.include_in_quota, archived: !!r.archived, sortOrder: n(r.sort_order),
+  includeInQuota: !!r.include_in_quota, excludeFromNetWorth: !!r.exclude_from_net_worth, archived: !!r.archived, sortOrder: n(r.sort_order),
 });
 const toCategory = (r: Row): Category => ({ id: n(r.id), name: s(r.name), icon: s(r.icon), archived: !!r.archived, sortOrder: n(r.sort_order) });
 const toIncome = (r: Row): Income => ({ id: n(r.id), period: s(r.period), date: s(r.date), description: s(r.description), amount: n(r.amount) });
@@ -308,8 +308,12 @@ export const saveAccount = (fd: FormData) => run(async () => {
     kind: oneOf(str(fd, "kind"), ["corrente", "risparmio", "contanti", "investimento", "altro"] as const, "corrente"),
     icon: oneOf(str(fd, "icon"), ACCOUNT_ICONS, "landmark"),
     color: oneOf(str(fd, "color"), ACCOUNT_COLORS, ACCOUNT_COLORS[0]),
-    initial_balance: str(fd, "initialBalance") ? amount(fd, "initialBalance", { allowZero: true, allowNegative: true }) : 0,
+    // "Saldo attuale": il saldo iniziale si ricava togliendo l'effetto dei movimenti già registrati
+    initial_balance:
+      (str(fd, "currentBalance") ? amount(fd, "currentBalance", { allowZero: true, allowNegative: true }) : 0) -
+      Number(str(fd, "movementsNet") || 0),
     include_in_quota: fd.get("includeInQuota") === "on",
+    exclude_from_net_worth: fd.get("excludeFromNetWorth") === "on",
   };
   const id = optId(fd, "id");
   if (!id) {

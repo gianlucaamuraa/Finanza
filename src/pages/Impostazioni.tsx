@@ -26,11 +26,14 @@ export default function Impostazioni() {
   const quotaNames = active.filter((a) => a.includeInQuota).map((a) => a.name);
 
   const accountRow = (a: (typeof accounts)[number]) => (
-    <SheetTrigger key={a.id} className="item" title="Modifica conto" content={<AccountForm initial={a} />}>
+    <SheetTrigger key={a.id} className="item" title="Modifica conto" content={<AccountForm initial={a} balance={balances.get(a.id) ?? a.initialBalance} />}>
       <IconBox name={a.icon} color={a.color} />
       <span className="main">
         <b>{a.name}</b>
-        <small>{a.includeInQuota ? "Conta per la quota giornaliera" : "Non conta per la quota"}</small>
+        <small>
+          {[a.includeInQuota ? "Conta per la quota" : null, a.excludeFromNetWorth ? "Escluso dal patrimonio" : null].filter(Boolean).join(" · ") ||
+            "Non conta per la quota"}
+        </small>
       </span>
       <span className="right num">{eur(balances.get(a.id) ?? 0, "auto")}</span>
     </SheetTrigger>

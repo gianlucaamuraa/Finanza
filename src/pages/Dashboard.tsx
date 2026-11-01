@@ -49,7 +49,8 @@ export default function Dashboard() {
 
   // Patrimonio
   const linkedAccIds = new Set(investments.map((i) => i.accountId).filter((x) => x != null));
-  const liquidity = sum(accounts.filter((a) => a.kind !== "investimento").map((a) => balances.get(a.id) ?? 0));
+  const liquidity = sum(accounts.filter((a) => a.kind !== "investimento" && !a.excludeFromNetWorth).map((a) => balances.get(a.id) ?? 0));
+  const excluded = accounts.filter((a) => a.excludeFromNetWorth && !a.archived);
   const invested =
     sum(investments.map((i) => investedTotal(i, current))) +
     sum(accounts.filter((a) => a.kind === "investimento" && !linkedAccIds.has(a.id)).map((a) => balances.get(a.id) ?? 0));
@@ -141,6 +142,11 @@ export default function Dashboard() {
             <div className="pill"><span>Liquidità</span><b className="num">{eur(liquidity)}</b></div>
             <div className="pill"><span>Investito</span><b className="num">{eur(invested)}</b></div>
           </div>
+          {excluded.length > 0 && (
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 10 }}>
+              Escluso: {excluded.map((a) => `${a.name} ${eur(balances.get(a.id) ?? 0, "auto")}`).join(", ")}
+            </div>
+          )}
         </div>
 
         <div className="grid2">

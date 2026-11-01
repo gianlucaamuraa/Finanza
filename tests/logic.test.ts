@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { eur, parseAmount, toInput } from "../src/lib/money";
 import { periodOf, periodRange } from "../src/lib/period";
-import { dailyQuota, investmentYear, plannedInfo } from "../src/lib/calc";
+import { dailyQuota, investmentYear, plannedAmount, plannedInfo } from "../src/lib/calc";
 
 describe("money", () => {
   it("parses Italian and English formats", () => {
@@ -99,5 +99,17 @@ describe("supabase url", () => {
     expect(normalizeUrl("https://abc.supabase.co/rest/v1/").url).toBe("https://abc.supabase.co");
     expect(normalizeUrl("postgresql://u:p@h:6543/postgres").problem).toMatch(/Project URL/);
     expect(normalizeUrl("").problem).toMatch(/Manca/);
+  });
+});
+
+describe("annual increase", () => {
+  it("adds the yearly step to planned months", () => {
+    const pac = { monthlyAmount: 25000, annualIncrease: 2500, startMonth: "2027-01", endMonth: "2056-12" };
+    expect(plannedAmount(pac, "2027-06")).toBe(25000);
+    expect(plannedAmount(pac, "2028-01")).toBe(27500);
+    expect(plannedAmount(pac, "2056-12")).toBe(97500);
+    let total = 0;
+    for (let y = 2027; y <= 2056; y++) total += investmentYear(pac, y, new Map(), new Map(), "2026-11").reduce((a, c) => a + c.amount, 0);
+    expect(total).toBe(22050000); // € 220.500 come nel file Excel
   });
 });

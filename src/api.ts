@@ -6,6 +6,7 @@ import { queryClient } from "./queryClient";
 import { periodRange } from "./lib/period";
 import { addMonths, daysInMonth, isDay, isMonth, monthIndex, type Month } from "./lib/dates";
 import { parseAmount } from "./lib/money";
+import { plannedAmount } from "./lib/calc";
 import { ACCOUNT_COLORS, ACCOUNT_ICONS, CATEGORY_ICONS, PLANNED_ICONS } from "./lib/icon-keys";
 
 // ---------------- Tipi ----------------
@@ -25,7 +26,7 @@ export type Planned = {
   id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null; spent: number;
 };
 export type Investment = {
-  id: number; name: string; monthlyAmount: number; startMonth: Month; endMonth: Month | null; accountId: number | null;
+  id: number; name: string; monthlyAmount: number; annualIncrease: number; startMonth: Month; endMonth: Month | null; accountId: number | null;
   recorded: Map<Month, number>; linked: Map<Month, number>;
 };
 
@@ -137,7 +138,7 @@ export async function getInvestments(): Promise<Investment[]> {
     accIds.length ? q<Row[]>(sb().from("allocation_totals").select("account_id,period,total").in("account_id", accIds)) : Promise.resolve([] as Row[]),
   ]);
   return list.map((r) => ({
-    id: n(r.id), name: s(r.name), monthlyAmount: n(r.monthly_amount), startMonth: s(r.start_month), endMonth: ns(r.end_month), accountId: nn(r.account_id),
+    id: n(r.id), name: s(r.name), monthlyAmount: n(r.monthly_amount), annualIncrease: n(r.annual_increase ?? 0), startMonth: s(r.start_month), endMonth: ns(r.end_month), accountId: nn(r.account_id),
     recorded: new Map(contribs.filter((c) => n(c.investment_id) === n(r.id)).map((c) => [s(c.month), n(c.amount)])),
     linked: new Map(r.account_id == null ? [] : linked.filter((l) => n(l.account_id) === n(r.account_id)).map((l) => [s(l.period), n(l.total)])),
   }));
@@ -220,7 +221,8 @@ export const deleteIncome = (id: number) => remove("incomes", id);
 // Ripartizione
 export const saveAllocation = (fd: FormData) => run(() =>
   save("allocations", optId(fd, "id"), {
-    period: month(fd, "period"), account_id: reqId(fd, "accountId", "Scegli un conto"), amount: amount(fd, "amount"), note: str(fd, "note") || null,
+    period: month(fd, "period"), account_id: reqId(fd, "accountId", "Scegli un conto"),
+    amount: amount(fd, "amount", { allowNegative: true }), note: str(fd, "note") || null,
   }));
 export const deleteAllocation = (id: number) => remove("allocations", id);
 
@@ -268,7 +270,9 @@ export const deletePlanned = (id: number) => remove("planned_expenses", id);
 export const saveInvestment = (fd: FormData) => run(async () => {
   const end = str(fd, "endMonth");
   const v = {
-    name: name(fd), monthly_amount: amount(fd, "monthlyAmount"), start_month: month(fd, "startMonth", "Mese di inizio non valido"),
+    name: name(fd), monthly_amount: amount(fd, "monthlyAmount"),
+    annual_increase: str(fd, "annualIncrease") ? amount(fd, "annualIncrease", { allowZero: true }) : 0,
+    start_month: month(fd, "startMonth", "Mese di inizio non valido"),
     end_month: end ? month(fd, "endMonth", "Mese di fine non valido") : null, account_id: optId(fd, "accountId"),
   };
   if (v.end_month && monthIndex(v.end_month) < monthIndex(v.start_month)) throw new InputError("Il mese di fine deve essere successivo a quello di inizio");
@@ -293,7 +297,7 @@ export const fillMissingContributions = (inv: Investment, current: Month) => run
   const last = inv.endMonth && monthIndex(inv.endMonth) < monthIndex(current) ? inv.endMonth : addMonths(current, -1);
   const rows: Row[] = [];
   for (let m = inv.startMonth; monthIndex(m) <= monthIndex(last); m = addMonths(m, 1))
-    if (!inv.recorded.has(m) && !inv.linked.has(m)) rows.push({ investment_id: inv.id, month: m, amount: inv.monthlyAmount });
+    if (!inv.recorded.has(m) && !inv.linked.has(m)) rows.push({ investment_id: inv.id, month: m, amount: plannedAmount(inv, m) });
   if (rows.length) await q(sb().from("investment_contributions").upsert(rows, { onConflict: "investment_id,month", ignoreDuplicates: true }));
 });
 

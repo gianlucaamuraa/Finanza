@@ -42,8 +42,16 @@ export type MonthCell = {
 };
 
 /** Celle mensili di un investimento per un anno. */
+type PlanLike = { monthlyAmount: number; startMonth: Month; endMonth: Month | null; annualIncrease?: number };
+
+/** Versamento previsto in un mese: importo iniziale + aumento annuo per ogni anno trascorso dall'inizio. */
+export function plannedAmount(inv: PlanLike, month: Month): number {
+  const years = Math.max(0, Number(month.slice(0, 4)) - Number(inv.startMonth.slice(0, 4)));
+  return inv.monthlyAmount + (inv.annualIncrease ?? 0) * years;
+}
+
 export function investmentYear(
-  inv: { monthlyAmount: number; startMonth: Month; endMonth: Month | null },
+  inv: PlanLike,
   year: number,
   recorded: Map<Month, number>,
   linked: Map<Month, number>,
@@ -59,7 +67,7 @@ export function investmentYear(
       return { month, amount: linked.get(month)!, kind: "linked" };
     if (!inPlan) return { month, amount: 0, kind: "none" };
     if (monthIndex(month) >= monthIndex(currentMonth))
-      return { month, amount: inv.monthlyAmount, kind: "planned" };
+      return { month, amount: plannedAmount(inv, month), kind: "planned" };
     return { month, amount: 0, kind: "missing" };
   });
 }

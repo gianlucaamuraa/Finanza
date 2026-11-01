@@ -94,6 +94,9 @@ create table if not exists public.investment_contributions (
 );
 create unique index if not exists contribution_unique on public.investment_contributions (investment_id, month);
 
+-- aumento annuo del versamento PAC (aggiunto dopo la prima versione)
+alter table public.investments add column if not exists annual_increase integer not null default 0;
+
 -- 2 + 3. Proprietario e regole di sicurezza ------------------------------
 
 do $$

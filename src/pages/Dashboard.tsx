@@ -59,8 +59,8 @@ export default function Dashboard() {
   const allocated = sum(period.allocations.map((a) => a.amount));
   const byAcc = new Map<number, number>();
   for (const a of period.allocations) byAcc.set(a.accountId, (byAcc.get(a.accountId) ?? 0) + a.amount);
-  const split = [...byAcc.entries()].sort((a, b) => b[1] - a[1]);
-  const splitBase = Math.max(income, allocated, 1);
+  const split = [...byAcc.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const splitBase = Math.max(income, sum(split.map(([, v]) => v)), 1);
 
   // Spese prevedibili
   const plannedInfos = planned.map((p) => ({ p, i: plannedInfo(p, current) }));

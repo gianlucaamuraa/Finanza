@@ -105,6 +105,7 @@ export function AllocationForm({ period, accounts, initial, suggested }: { perio
       <Field label="Nota (opzionale)" htmlFor="note">
         <input id="note" name="note" className="input" defaultValue={initial?.note ?? ""} placeholder="es. extra per regali" />
       </Field>
+      <p className="note" style={{ marginTop: -6 }}>Per registrare soldi spostati fuori da un conto usa un importo negativo (es. -100).</p>
       <Submit />
       {initial && <ConfirmButton run={() => A.deleteAllocation(initial.id)} />}
     </ActionForm>
@@ -217,7 +218,7 @@ function PlannedRange({ amount, initial, defaultStart }: { amount: string; initi
 
 // ---------- Investimento (PAC) ----------
 
-export function InvestmentForm({ accounts, defaultStart, initial }: { accounts: AccountOpt[]; defaultStart: Month; initial?: { id: number; name: string; monthlyAmount: number; startMonth: Month; endMonth: Month | null; accountId: number | null } }) {
+export function InvestmentForm({ accounts, defaultStart, initial }: { accounts: AccountOpt[]; defaultStart: Month; initial?: { id: number; name: string; monthlyAmount: number; annualIncrease: number; startMonth: Month; endMonth: Month | null; accountId: number | null } }) {
   return (
     <ActionForm action={A.saveInvestment}>
       <Hidden name="id" value={initial?.id} />
@@ -226,6 +227,9 @@ export function InvestmentForm({ accounts, defaultStart, initial }: { accounts: 
       </Field>
       <Field label="Versamento mensile (€)" htmlFor="monthlyAmount">
         <AmountInput name="monthlyAmount" defaultValue={initial ? toInput(initial.monthlyAmount) : ""} />
+      </Field>
+      <Field label="Aumento ogni anno (€, opzionale)" htmlFor="annualIncrease">
+        <input id="annualIncrease" name="annualIncrease" className="input num" inputMode="decimal" placeholder="0" defaultValue={initial?.annualIncrease ? toInput(initial.annualIncrease) : ""} />
       </Field>
       <MonthPicker name="startMonth" label="Dal" defaultValue={initial?.startMonth ?? defaultStart} />
       <MonthPicker name="endMonth" label="Al (opzionale)" defaultValue={initial?.endMonth} optional />

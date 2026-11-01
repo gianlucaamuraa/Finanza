@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router";
 import { Pencil, Plus, TrendingUp } from "lucide-react";
 import { combine, useAccounts, useBase, useInvestments } from "@/hooks";
 import { investedTotal, yearCells } from "@/lib/view";
+import { plannedAmount } from "@/lib/calc";
 import { MESI_LUNGHI, addMonths, monthIndex, monthLabel } from "@/lib/dates";
 import { eur, sum } from "@/lib/money";
 import { SheetTrigger } from "@/components/Sheet";
@@ -84,7 +85,10 @@ export default function LungoTermine() {
         <div className="label">{inv.name} · Totale versato</div>
         <div className="big num">{eur(total)}</div>
         <div className="pills">
-          <div className="pill"><span>Versamento mensile</span><b className="num">{eur(inv.monthlyAmount)}/mese</b></div>
+          <div className="pill">
+            <span>Versamento mensile {year}</span>
+            <b className="num">{eur(plannedAmount(inv, `${year}-01`))}/mese</b>
+          </div>
           <div className="pill">
             <span>{investments.length > 1 ? "Tutti i piani" : "Dal"}</span>
             <b className="num">{investments.length > 1 ? eur(allTotal) : monthLabel(inv.startMonth, false)}</b>
@@ -127,7 +131,7 @@ export default function LungoTermine() {
               key={c.month}
               className={c.kind}
               title={`${inv.name} · ${monthLabel(c.month)}`}
-              content={<ContributionForm investmentId={inv.id} month={c.month} amount={c.amount || inv.monthlyAmount} recorded={c.kind === "recorded"} />}
+              content={<ContributionForm investmentId={inv.id} month={c.month} amount={c.amount || plannedAmount(inv, c.month)} recorded={c.kind === "recorded"} />}
             >
               <span>{MESI_LUNGHI[i]}</span>
               <b className="num">{c.kind === "none" || c.kind === "missing" ? "—" : eur(c.amount)}</b>

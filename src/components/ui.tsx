@@ -42,6 +42,7 @@ export function MonthNav({ period, payday, hrefFor }: { period: Month; payday: n
 export function PageSkeleton() {
   return (
     <div aria-busy="true" aria-label="Caricamento">
+      <p className="note" style={{ textAlign: "center", margin: "0 0 12px" }}>Caricamento dati…</p>
       <div className="skeleton" style={{ height: 150 }} />
       <div className="skeleton" style={{ height: 90 }} />
       <div className="skeleton" style={{ height: 220 }} />

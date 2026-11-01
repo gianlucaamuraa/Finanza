@@ -63,6 +63,8 @@ export function dbMessage(e: unknown): string {
   if (/tenant or user not found/i.test(msg))
     return "Supabase non riconosce l'utente: copia di nuovo la stringa \"Transaction pooler\" (l'utente deve essere del tipo postgres.xxxxxxxx).";
   if (c === "ENOTFOUND" || c === "EAI_AGAIN") return "L'indirizzo del database in DATABASE_URL non esiste: ricopia la stringa da Supabase.";
+  if (c === "TIMEOUT")
+    return "Il database non ha risposto in tempo: la connessione resta bloccata. Verifica di usare la stringa \"Transaction pooler\" di Supabase e che il progetto Supabase sia attivo (non in pausa).";
   if (c === "ECONNREFUSED" || c === "ETIMEDOUT" || c === "CONNECT_TIMEOUT" || c === "ENETUNREACH")
     return "Il database non risponde: verifica che il progetto Supabase sia attivo e di usare la stringa \"Transaction pooler\".";
   return `Errore di connessione al database${c ? ` (codice ${c})` : ""}.`;

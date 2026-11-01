@@ -8,13 +8,21 @@ import { dbMessage } from "@/lib/health";
  * Esegue il caricamento di una pagina: se fallisce mostra l'errore reale
  * (codice e messaggio) invece della schermata generica.
  */
+const TIMEOUT_MS = 15000;
+
 export async function safe(render: () => Promise<ReactNode>): Promise<ReactNode> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error("Il database non ha risposto entro 15 secondi"), { code: "TIMEOUT" })), TIMEOUT_MS);
+  });
   try {
-    return await render();
+    return await Promise.race([render(), timeout]);
   } catch (e) {
     unstable_rethrow(e);
     console.error("[finanza] errore di caricamento", e);
     return <LoadError error={e} />;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

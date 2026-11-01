@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { safe } from "@/components/safe";
 import { Pencil, Plus, TrendingUp } from "lucide-react";
 import { getAccounts, getInvestments } from "@/lib/data";
 import { base, investedTotal, yearCells } from "@/lib/view";
@@ -29,6 +30,10 @@ const KIND_NOTE: Record<string, string> = {
 };
 
 async function LungoTermine({ searchParams }: { searchParams: SP }) {
+  return safe(() => LungoTermineContent({ searchParams }));
+}
+
+async function LungoTermineContent({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const { current } = await base();
   const [investments, accounts] = await Promise.all([getInvestments(), getAccounts()]);

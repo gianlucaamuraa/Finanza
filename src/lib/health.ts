@@ -55,7 +55,7 @@ function code(e: unknown): string {
   return (e as { code?: string })?.code ?? "";
 }
 
-function dbMessage(e: unknown): string {
+export function dbMessage(e: unknown): string {
   const c = code(e);
   const msg = String((e as { message?: string })?.message ?? "");
   if (c === "28P01" || /password authentication failed/i.test(msg))

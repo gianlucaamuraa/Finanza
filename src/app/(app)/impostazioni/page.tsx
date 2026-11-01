@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { safe } from "@/components/safe";
 import { ChevronRight, LogOut, Plus } from "lucide-react";
 import { getAccounts, getBalances, getCategories } from "@/lib/data";
 import { base } from "@/lib/view";
@@ -19,6 +20,10 @@ export default function ImpostazioniPage() {
 }
 
 async function Impostazioni() {
+  return safe(() => ImpostazioniContent());
+}
+
+async function ImpostazioniContent() {
   const { payday } = await base();
   const [accounts, categories, balances] = await Promise.all([getAccounts(true), getCategories(), getBalances()]);
   const active = accounts.filter((a) => !a.archived);

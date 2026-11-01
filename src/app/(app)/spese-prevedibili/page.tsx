@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { safe } from "@/components/safe";
 import { Plus } from "lucide-react";
 import { getPlanned } from "@/lib/data";
 import { base } from "@/lib/view";
@@ -25,6 +26,10 @@ export default function SpesePrevedibiliPage({ searchParams }: { searchParams: S
 }
 
 async function SpesePrevedibili({ searchParams }: { searchParams: SP }) {
+  return safe(() => SpesePrevedibiliContent({ searchParams }));
+}
+
+async function SpesePrevedibiliContent({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const { current } = await base();
   const planned = await getPlanned();

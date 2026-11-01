@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { safe } from "@/components/safe";
 import { ChevronRight, CircleAlert, CircleCheck, Pencil } from "lucide-react";
 import { getAccounts, getBalances, getCategories, getInvestments, getPeriod, getPlanned, getSpentInRange } from "@/lib/data";
 import { base, investedTotal, sumCells } from "@/lib/view";
@@ -21,6 +22,10 @@ export default function DashboardPage() {
 }
 
 async function Dashboard() {
+  return safe(() => DashboardContent());
+}
+
+async function DashboardContent() {
   const { payday, today, current } = await base();
   // Confronto con il mese precedente allo stesso numero di giorni dallo stipendio
   const range = periodRange(current, payday);

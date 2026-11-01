@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { safe } from "@/components/safe";
 import { Briefcase, ChevronRight, CircleCheck, Plus } from "lucide-react";
 import { getAccounts, getBalances, getCategories, getPeriod, getPlanned, getSpentInRange } from "@/lib/data";
 import { base, clampDay } from "@/lib/view";
@@ -31,6 +32,10 @@ function href(m: Month, tab: string, conto?: number | null) {
 }
 
 async function Movimenti({ searchParams }: { searchParams: SP }) {
+  return safe(() => MovimentiContent({ searchParams }));
+}
+
+async function MovimentiContent({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const { payday, today, current } = await base();
   const period = isMonth(sp.mese) ? sp.mese : current;
@@ -60,20 +65,20 @@ async function Movimenti({ searchParams }: { searchParams: SP }) {
           <Link href="/impostazioni" className="btn accent">Vai alle impostazioni</Link>
         </div>
       ) : tab === "stipendio" ? (
-        <Stipendio period={period} data={data} accounts={accounts} opts={opts} />
+        await Stipendio({ period, data, accounts, opts })
       ) : (
-        <Uscite
-          period={period}
-          payday={payday}
-          today={today}
-          data={data}
-          accById={accById}
-          contoParam={sp.conto}
-          opts={opts}
-          categories={categories}
-          planned={planned.filter((p) => plannedInfo(p, period).status !== "done" || p.spent > 0)}
-          defaultDate={defaultDate}
-        />
+        await Uscite({
+          period,
+          payday,
+          today,
+          data,
+          accById,
+          contoParam: sp.conto,
+          opts,
+          categories,
+          planned: planned.filter((p) => plannedInfo(p, period).status !== "done" || p.spent > 0),
+          defaultDate,
+        })
       )}
     </>
   );

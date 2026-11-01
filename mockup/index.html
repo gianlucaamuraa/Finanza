@@ -20,7 +20,7 @@
   .num{font-variant-numeric:tabular-nums}
 
   /* Telefono: cornice su desktop, schermo intero su mobile */
-  .phone{width:390px;height:844px;background:var(--bg);border-radius:44px;overflow:hidden;position:relative;
+  .phone{width:390px;height:844px;background:var(--bg);border-radius:44px;overflow:hidden;overflow:clip;position:relative;
          box-shadow:0 0 0 10px #111,0 30px 60px rgba(0,0,0,.25);display:flex;flex-direction:column}
   @media (max-width:500px){
     body{background:var(--bg);align-items:stretch}
@@ -167,6 +167,28 @@
   .calc b{font-size:22px;color:var(--accent)}
   .calc small{display:block;font-size:12px;color:var(--accent);opacity:.8;font-weight:500}
 
+  .seg{display:flex;background:#e7e9ed;border-radius:12px;padding:3px;margin-bottom:12px}
+  .seg button{flex:1;border:none;background:none;padding:9px;border-radius:10px;font:600 14px Inter,sans-serif;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .budget{margin-bottom:14px}
+  .budget:last-child{margin-bottom:0}
+  .budget .top{display:flex;justify-content:space-between;font-size:14px;align-items:baseline}
+  .budget .top b{font-weight:600}
+  .budget .top span{font-size:13px;color:var(--muted)}
+  .progress i.warn{background:var(--warn)} .progress i.over{background:var(--neg)}
+  .catrow{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px}
+  .catrow .ico{width:32px;height:32px;font-size:15px;border-radius:9px;background:var(--bg)}
+  .catrow .mid{flex:1;min-width:0}
+  .catrow .mid .progress{margin-top:5px;height:5px}
+  .catrow .amt{font-weight:600;min-width:72px;text-align:right}
+  .day{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 4px}
+  .day:first-child{margin-top:0}
+  .delta{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.18);margin-left:6px;vertical-align:middle}
+  .catgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .catgrid button{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 2px;font:500 11px Inter,sans-serif;color:var(--text);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .catgrid button span{font-size:20px}
+  .catgrid button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .field input[type=date]{min-width:0;-webkit-appearance:none;appearance:none}
   .note{font-size:12px;color:var(--muted);text-align:center;margin:4px 0 16px}
   .fab{position:absolute;right:20px;bottom:96px;width:56px;height:56px;border-radius:18px;background:var(--accent);color:#fff;border:none;
        font-size:28px;box-shadow:0 8px 20px rgba(15,118,110,.4);cursor:pointer;z-index:5;display:none}
@@ -200,6 +222,16 @@
       </div>
 
       <div class="card">
+        <h3>Uscite di novembre <a onclick="go('movimenti');setMovTab('usc')">Dettagli</a></h3>
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="kpi"><div class="v num" id="d-spent"></div><div class="s" id="d-spent-s"></div></div>
+          <div style="text-align:right" class="kpi"><div class="v num" id="d-left" style="font-size:16px"></div><div class="s">ancora disponibili</div></div>
+        </div>
+        <div class="progress"><i id="d-spent-bar"></i></div>
+        <div style="margin-top:12px" id="d-cats"></div>
+      </div>
+
+      <div class="card">
         <h3>Ripartizione stipendio <a onclick="go('movimenti')">Dettagli</a></h3>
         <div class="stack" id="d-stack"></div>
         <div class="legend" id="d-legend"></div>
@@ -220,6 +252,33 @@
     <!-- MOVIMENTI -->
     <section class="view" id="v-movimenti">
       <div class="monthbar"><button onclick="shiftMonth(-1)">‹</button><b id="m-month"></b><button onclick="shiftMonth(1)">›</button></div>
+      <div class="seg" id="m-seg"><button class="on" data-t="stip">Stipendio</button><button data-t="usc">Uscite</button></div>
+
+      <div id="m-tab-usc" style="display:none">
+        <div class="card hero">
+          <div class="label">Speso nel mese</div>
+          <div class="big num" style="margin-bottom:12px"><span id="u-tot"></span><span class="delta" id="u-delta"></span></div>
+          <div class="row">
+            <div class="pill"><span>Assegnato per le spese</span><b class="num" id="u-bud"></b></div>
+            <div class="pill"><span>Disponibile</span><b class="num" id="u-left"></b></div>
+          </div>
+        </div>
+        <div class="chips" id="u-chips"></div>
+        <div class="card" id="u-budget-card">
+          <h3>Per conto</h3>
+          <div id="u-budget"></div>
+        </div>
+        <div class="card">
+          <h3>Per categoria</h3>
+          <div id="u-cats"></div>
+        </div>
+        <div class="card">
+          <h3>Elenco uscite <a onclick="openSheet('sh-usc')">+ Aggiungi</a></h3>
+          <div class="list" id="u-list"></div>
+        </div>
+      </div>
+
+      <div id="m-tab-stip">
       <div class="card">
         <h3>Entrata</h3>
         <div class="income">
@@ -236,6 +295,7 @@
         <div class="list" id="m-acc"></div>
       </div>
       <button class="btn ghost" onclick="openSheet('sh-mov')">Copia ripartizione dal mese precedente</button>
+      </div>
     </section>
 
     <!-- SPESE PREVEDIBILI -->
@@ -320,6 +380,21 @@
     <div class="field"><label>Importo (€)</label><input type="number" inputmode="decimal" value="150"></div>
     <div class="field"><label>Nota (opzionale)</label><input placeholder="es. spesa extra"></div>
     <button class="btn" onclick="closeSheets()">Salva</button>
+  </div>
+
+  <div class="sheet" id="sh-usc">
+    <div class="grab"></div>
+    <h2>Nuova uscita</h2>
+    <div class="field"><label>Importo (€)</label><input type="number" inputmode="decimal" value="23.40" style="font-size:24px;font-weight:700"></div>
+    <div class="field"><label>Categoria</label><div class="catgrid" id="f-cats"></div></div>
+    <div class="field-row">
+      <div class="field"><label>Conto</label><select id="f-acc"></select></div>
+      <div class="field"><label>Data</label><input type="date" value="2026-11-24"></div>
+    </div>
+    <div class="field"><label>Descrizione</label><input placeholder="es. Esselunga"></div>
+    <div class="field"><label>Collega a spesa prevedibile (opzionale)</label>
+      <select><option>— Nessuna —</option><option>Assicurazione auto</option><option>Regali di Natale</option><option>Bollo auto</option><option>Vacanze estive</option></select></div>
+    <button class="btn" onclick="closeSheets()">Salva uscita</button>
   </div>
 
   <div class="sheet" id="sh-acc">
@@ -424,7 +499,7 @@ function bars(id, vals, onSel, sel){
 
 // ---- Movimenti ----
 let curMonth = [2026,11];
-function shiftMonth(d){ let i=idx(curMonth)+d; curMonth=[Math.floor(i/12), i%12+1]; renderMovimenti(); }
+function shiftMonth(d){ let i=idx(curMonth)+d; curMonth=[Math.floor(i/12), i%12+1]; renderMovimenti(); renderUscite(); }
 function renderMovimenti(){
   const key = curMonth[0]+'-'+String(curMonth[1]).padStart(2,'0');
   document.getElementById('m-month').textContent = MESI_L[curMonth[1]-1]+' '+curMonth[0];
@@ -442,6 +517,85 @@ function renderMovimenti(){
     `<div class="item"><div class="ico" style="background:var(--bg)">${a.ico}</div><div class="main"><b>${a.name}</b><small>${a.type}</small></div><div class="right num">${a.name.includes('PAC')?eur(pacTotal):eur(a.bal)}</div></div>`).join('');
   document.getElementById('acc-edit').innerHTML = accounts.map(a=>
     `<div class="item"><div class="ico" style="background:var(--bg)">${a.ico}</div><div class="main"><b>${a.name}</b><small>${a.type}</small></div><div class="right" style="color:var(--muted)">✎</div></div>`).join('');
+}
+
+// ---- Uscite ----
+const CATS = {
+  spesa:{n:'Spesa',i:'🛒'}, casa:{n:'Casa e bollette',i:'💡'}, trasporti:{n:'Trasporti',i:'⛽'}, ristoranti:{n:'Ristoranti e bar',i:'🍕'},
+  shopping:{n:'Shopping',i:'🛍️'}, abbonamenti:{n:'Abbonamenti',i:'📺'}, salute:{n:'Salute',i:'💊'}, svago:{n:'Svago',i:'🎬'},
+};
+const outflows = { // [giorno, descrizione, categoria, conto, importo]
+  '2026-11': [
+    [24,'Esselunga','spesa','Conto Intesa',52.10],[23,'Pizzeria Da Mario','ristoranti','Contanti',25],[22,'Benzina Q8','trasporti','Conto Intesa',55],
+    [20,'Zara','shopping','Conto Intesa',59.90],[18,'Conad','spesa','Conto Intesa',38.75],[16,'Parrucchiere','svago','Contanti',20],
+    [15,'Cena fuori','ristoranti','Conto Intesa',48],[14,'Farmacia','salute','Conto Intesa',18.50],[12,'Amazon','shopping','Conto Intesa',42.90],
+    [10,'Mercato','spesa','Contanti',18],[9,'Bar – colazioni','ristoranti','Contanti',12.50],[8,'Benzina Q8','trasporti','Conto Intesa',60],
+    [6,'Esselunga','spesa','Conto Intesa',64.30],[5,'Bolletta luce','casa','Conto Intesa',78],[3,'Telepass','trasporti','Conto Intesa',12],
+    [2,'Netflix','abbonamenti','Conto Intesa',13.99],[1,'Spotify','abbonamenti','Conto Intesa',10.99],
+  ],
+};
+const PREV_TOT = 742.30; // totale uscite ottobre (esempio)
+let movTab='stip', accFilter='Tutti';
+const monthKey = () => curMonth[0]+'-'+String(curMonth[1]).padStart(2,'0');
+const sum = a => a.reduce((t,x)=>t+x,0);
+
+function catBreakdown(rows){
+  const by={}; rows.forEach(r=>by[r[2]]=(by[r[2]]||0)+r[4]);
+  return Object.entries(by).sort((a,b)=>b[1]-a[1]);
+}
+function catRows(entries, total, limit){
+  return entries.slice(0,limit).map(([c,v])=>`<div class="catrow"><div class="ico">${CATS[c].i}</div><div class="mid">${CATS[c].n}<div class="progress"><i style="width:${v/entries[0][1]*100}%"></i></div></div><div class="amt num">${eur(v,2)}<div style="font-size:11px;color:var(--muted);font-weight:400">${Math.round(v/total*100)}%</div></div></div>`).join('');
+}
+function budgetFor(acc, key){ const sp=splits[key]||[]; const f=sp.find(x=>x[0]===acc); return f?f[1]:0; }
+function barClass(p){ return p>1?'over':p>.85?'warn':''; }
+
+function renderUscite(){
+  const key = monthKey(), all = outflows[key]||[];
+  const spendAccs = [...new Set(all.map(r=>r[3]))];
+  document.getElementById('u-chips').innerHTML = ['Tutti',...spendAccs].map(a=>`<button class="chip ${a===accFilter?'on':''}" data-a="${a}">${a}</button>`).join('');
+  const rows = accFilter==='Tutti' ? all : all.filter(r=>r[3]===accFilter);
+  const tot = sum(rows.map(r=>r[4]));
+  const accs = accFilter==='Tutti' ? spendAccs : [accFilter];
+  const bud = sum(accs.map(a=>budgetFor(a,key)));
+  document.getElementById('u-tot').textContent = eur(tot,2);
+  const d = document.getElementById('u-delta');
+  d.style.display = accFilter==='Tutti' && all.length ? '' : 'none';
+  d.textContent = (tot<PREV_TOT?'↓ ':'↑ ') + eur(Math.abs(tot-PREV_TOT)) + ' vs ottobre';
+  document.getElementById('u-bud').textContent = eur(bud);
+  document.getElementById('u-left').textContent = eur(bud-tot,2);
+  document.getElementById('u-budget-card').style.display = all.length ? '' : 'none';
+  document.getElementById('u-budget').innerHTML = accs.map(a=>{
+    const s=sum(all.filter(r=>r[3]===a).map(r=>r[4])), b=budgetFor(a,key), p=b?s/b:0;
+    return `<div class="budget"><div class="top"><b>${accIco(a)} ${a}</b><span class="num">${eur(s,2)} / ${eur(b)}</span></div><div class="progress"><i class="${barClass(p)}" style="width:${Math.min(p,1)*100}%"></i></div></div>`}).join('');
+  const cb = catBreakdown(rows);
+  document.getElementById('u-cats').innerHTML = cb.length ? catRows(cb, tot) : '<p class="note" style="margin:0">Nessuna uscita.</p>';
+  let last=null, html='';
+  rows.forEach(r=>{
+    if(r[0]!==last){ html+=`<div class="day">${r[0]} ${MESI_L[curMonth[1]-1]}</div>`; last=r[0]; }
+    html+=`<div class="item"><div class="ico" style="background:var(--bg)">${CATS[r[2]].i}</div><div class="main"><b>${r[1]}</b><small>${CATS[r[2]].n} · ${r[3]}</small></div><div class="right num neg">−${eur(r[4],2)}</div></div>`;
+  });
+  document.getElementById('u-list').innerHTML = html || '<p class="note" style="margin:8px 0">Nessuna uscita inserita per questo mese.</p>';
+}
+document.getElementById('u-chips').onclick = e=>{ if(e.target.dataset.a){ accFilter=e.target.dataset.a; renderUscite(); } };
+function setMovTab(t){
+  movTab=t;
+  document.querySelectorAll('#m-seg button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.getElementById('m-tab-stip').style.display = t==='stip'?'':'none';
+  document.getElementById('m-tab-usc').style.display = t==='usc'?'':'none';
+}
+document.getElementById('m-seg').onclick = e=>{ if(e.target.dataset.t) setMovTab(e.target.dataset.t); };
+document.getElementById('f-cats').innerHTML = Object.entries(CATS).map(([k,c],i)=>`<button class="${i===0?'on':''}"><span>${c.i}</span>${c.n.split(' ')[0]}</button>`).join('');
+document.getElementById('f-cats').onclick = e=>{ const b=e.target.closest('button'); if(b) [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); };
+document.getElementById('f-acc').innerHTML = accounts.filter(a=>!a.name.includes('PAC')).map(a=>`<option>${a.name}</option>`).join('');
+
+function renderDashSpend(){
+  const all = outflows['2026-11'], tot = sum(all.map(r=>r[4]));
+  const accs = [...new Set(all.map(r=>r[3]))], bud = sum(accs.map(a=>budgetFor(a,'2026-11')));
+  document.getElementById('d-spent').textContent = eur(tot,2);
+  document.getElementById('d-spent-s').textContent = (tot<PREV_TOT?'↓ ':'↑ ')+eur(Math.abs(tot-PREV_TOT))+' rispetto a ottobre';
+  document.getElementById('d-left').textContent = eur(bud-tot);
+  const b = document.getElementById('d-spent-bar'); b.style.width = Math.min(tot/bud,1)*100+'%'; b.className = barClass(tot/bud);
+  document.getElementById('d-cats').innerHTML = catRows(catBreakdown(all), tot, 3);
 }
 
 // ---- Spese prevedibili ----
@@ -511,11 +665,11 @@ function go(v){
   if(location.hash.slice(1)!==v) history.replaceState(null,'','#'+v);
 }
 document.getElementById('tabs').onclick = e=>{ const b=e.target.closest('button'); if(b) go(b.dataset.v); };
-function fabAction(){ openSheet(current==='spese'?'sh-exp':'sh-mov'); }
+function fabAction(){ openSheet(current==='spese'?'sh-exp':movTab==='usc'?'sh-usc':'sh-mov'); }
 function openSheet(id){ document.getElementById('sheet-bg').classList.add('open'); document.getElementById(id).classList.add('open'); if(id==='sh-exp') calcRata(); }
 function closeSheets(){ document.querySelectorAll('.sheet,.sheet-bg').forEach(s=>s.classList.remove('open')); }
 
-renderDashboard(); renderMovimenti(); renderSpese(); renderLungo();
+renderDashboard(); renderMovimenti(); renderSpese(); renderLungo(); renderUscite(); renderDashSpend();
 const start = location.hash.slice(1); go(TITLES[start]?start:'dashboard');
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(TITLES[h]&&h!==current) go(h);});
 </script>

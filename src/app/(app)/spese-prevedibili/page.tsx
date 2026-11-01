@@ -1,0 +1,93 @@
+import Link from "next/link";
+import { Suspense } from "react";
+import { Plus } from "lucide-react";
+import { getPlanned } from "@/lib/data";
+import { base } from "@/lib/view";
+import { plannedInfo, type PlannedStatus } from "@/lib/calc";
+import { monthLabel } from "@/lib/dates";
+import { eur, sum } from "@/lib/money";
+import { IconBox } from "@/components/Icon";
+import { SheetTrigger } from "@/components/Sheet";
+import { PlannedForm } from "@/components/forms";
+import { PageSkeleton } from "@/components/ui";
+
+type SP = Promise<{ filtro?: string }>;
+
+const FILTERS: [string, string][] = [["tutte", "Tutte"], ["active", "In corso"], ["future", "Future"], ["done", "Concluse"]];
+const TAG: Record<PlannedStatus, [string, string]> = { active: ["", "In corso"], future: ["future", "Futura"], done: ["done", "Conclusa"] };
+
+export default function SpesePrevedibiliPage({ searchParams }: { searchParams: SP }) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <SpesePrevedibili searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function SpesePrevedibili({ searchParams }: { searchParams: SP }) {
+  const sp = await searchParams;
+  const { current } = await base();
+  const planned = await getPlanned();
+  const filter = FILTERS.some(([k]) => k === sp.filtro) ? sp.filtro! : "tutte";
+
+  const items = planned.map((p) => ({ p, i: plannedInfo(p, current) }));
+  const active = items.filter((x) => x.i.status === "active");
+  const shown = filter === "tutte" ? items : items.filter((x) => x.i.status === filter);
+  // ordine: in corso, future, concluse
+  const order: Record<PlannedStatus, number> = { active: 0, future: 1, done: 2 };
+  shown.sort((a, b) => order[a.i.status] - order[b.i.status]);
+
+  return (
+    <>
+      <div className="card hero">
+        <div className="label">Accantonamento mensile · {monthLabel(current)}</div>
+        <div className="big num">{eur(Math.round(sum(active.map((x) => x.i.rata))), 2)}</div>
+        <div className="pills">
+          <div className="pill"><span>Spese in corso</span><b>{active.length}</b></div>
+          <div className="pill"><span>Già accantonato</span><b className="num">{eur(sum(active.map((x) => x.i.accrued)))}</b></div>
+        </div>
+      </div>
+
+      <div className="chips">
+        {FILTERS.map(([k, l]) => (
+          <Link key={k} href={k === "tutte" ? "/spese-prevedibili" : `/spese-prevedibili?filtro=${k}`} className={`chip${filter === k ? " on" : ""}`}>{l}</Link>
+        ))}
+      </div>
+
+      {shown.length === 0 ? (
+        <div className="card">
+          <p className="empty">{items.length === 0 ? "Nessuna spesa prevedibile. Aggiungi la prima con il pulsante +." : "Nessuna spesa in questa categoria."}</p>
+        </div>
+      ) : (
+        shown.map(({ p, i }) => (
+          <SheetTrigger key={p.id} className="card" title="Modifica spesa prevedibile" content={<PlannedForm defaultStart={current} initial={p} />}>
+            <span style={{ display: "flex", gap: 12, alignItems: "center", textAlign: "left", width: "100%" }}>
+              <IconBox name={p.icon} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontSize: 16, display: "block" }}>
+                  {p.name} <span className={`tag ${TAG[i.status][0]}`}>{TAG[i.status][1]}</span>
+                </b>
+                <small className="muted" style={{ fontSize: 12 }}>
+                  {monthLabel(p.startMonth, false)} → {monthLabel(p.endMonth, false)} · {i.n} {i.n === 1 ? "rata" : "rate"}
+                </small>
+              </span>
+              <span style={{ textAlign: "right" }}>
+                <b className="num" style={{ fontSize: 18, display: "block" }}>{eur(i.rata, 2)}</b>
+                <small className="muted" style={{ fontSize: 11 }}>al mese</small>
+              </span>
+            </span>
+            <span className="progress" style={{ display: "block" }}><i style={{ width: `${(i.paid / i.n) * 100}%` }} /></span>
+            <span className="meta">
+              <span className="num">{eur(i.accrued)} di {eur(p.totalAmount)}</span>
+              <span>{p.spent > 0 ? `Speso ${eur(p.spent, "auto")} · ` : ""}{i.paid}/{i.n} rate</span>
+            </span>
+          </SheetTrigger>
+        ))
+      )}
+
+      <SheetTrigger className="fab" title="Nuova spesa prevedibile" ariaLabel="Nuova spesa prevedibile" content={<PlannedForm defaultStart={current} />}>
+        <Plus size={28} />
+      </SheetTrigger>
+    </>
+  );
+}

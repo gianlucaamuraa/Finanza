@@ -3,7 +3,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import { db, schema } from "@/db";
+import { db, resetDb, schema } from "@/db";
 import { checkPassword, endSession, requireAuth, startSession } from "@/lib/auth";
 import { addMonths, daysInMonth, isDay, isMonth, monthIndex } from "@/lib/dates";
 import { parseAmount } from "@/lib/money";
@@ -56,12 +56,24 @@ const oneOf = <T extends string>(v: string, list: readonly T[], fallback: T): T 
 
 async function run(fn: () => Promise<void>): Promise<ActionState> {
   await requireAuth();
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await fn();
+    await Promise.race([
+      fn(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(Object.assign(new Error("timeout"), { code: "TIMEOUT" })), 8000);
+      }),
+    ]);
   } catch (e) {
     if (e instanceof InputError) return { ok: false, error: e.message };
+    if ((e as { code?: string })?.code === "TIMEOUT") {
+      resetDb();
+      return { ok: false, error: "Il database non ha risposto. Tocca di nuovo Salva." };
+    }
     console.error(e);
     return { ok: false, error: "Si è verificato un errore. Riprova." };
+  } finally {
+    clearTimeout(timer);
   }
   refresh();
   return { ok: true };

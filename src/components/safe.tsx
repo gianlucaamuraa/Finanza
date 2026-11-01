@@ -3,26 +3,41 @@ import type { ReactNode } from "react";
 import { unstable_rethrow } from "next/navigation";
 import { CircleAlert } from "lucide-react";
 import { dbMessage } from "@/lib/health";
+import { resetDb } from "@/db";
 
 /**
  * Esegue il caricamento di una pagina: se fallisce mostra l'errore reale
  * (codice e messaggio) invece della schermata generica.
  */
-const TIMEOUT_MS = 15000;
+/** Rifiuta con codice TIMEOUT se la promessa non si risolve entro ms. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const t = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(Object.assign(new Error(`Il database non ha risposto entro ${ms / 1000} secondi`), { code: "TIMEOUT" })),
+      ms,
+    );
+  });
+  return Promise.race([p, t]).finally(() => clearTimeout(timer));
+}
+
+const isTimeout = (e: unknown) => (e as { code?: string })?.code === "TIMEOUT";
 
 export async function safe(render: () => Promise<ReactNode>): Promise<ReactNode> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(Object.assign(new Error("Il database non ha risposto entro 15 secondi"), { code: "TIMEOUT" })), TIMEOUT_MS);
-  });
   try {
-    return await Promise.race([render(), timeout]);
+    try {
+      return await withTimeout(render(), 7000);
+    } catch (e) {
+      // connessione probabilmente morta: si riparte con connessioni nuove
+      if (!isTimeout(e)) throw e;
+      console.warn("[finanza] timeout database, nuovo tentativo con connessioni nuove");
+      resetDb();
+      return await withTimeout(render(), 10000);
+    }
   } catch (e) {
     unstable_rethrow(e);
     console.error("[finanza] errore di caricamento", e);
     return <LoadError error={e} />;
-  } finally {
-    clearTimeout(timer);
   }
 }
 

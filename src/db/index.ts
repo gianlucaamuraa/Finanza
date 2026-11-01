@@ -13,7 +13,16 @@ function create() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL non impostata");
   // prepare: false per compatibilità con i pooler (Supabase/Neon in modalità transaction)
-  const pg = postgres(url, { prepare: false, max: 5, ssl: sslFor(url) });
+  // Connessioni brevi: su Vercel l'app viene "congelata" tra una richiesta e l'altra
+  // e una connessione rimasta aperta può morire senza che ce ne accorgiamo.
+  const pg = postgres(url, {
+    prepare: false,
+    max: 3,
+    ssl: sslFor(url),
+    idle_timeout: 5,
+    max_lifetime: 60,
+    connect_timeout: 10,
+  });
   return drizzle(pg, { schema });
 }
 
@@ -32,4 +41,11 @@ export const db = new Proxy({} as DB, {
     return typeof v === "function" ? v.bind(real) : v;
   },
 });
+/** Chiude tutte le connessioni: la prossima query ne apre di nuove. */
+export function resetDb() {
+  const old = g.finanzaDb;
+  g.finanzaDb = undefined;
+  old?.$client.end({ timeout: 0 }).catch(() => {});
+}
+
 export { schema };

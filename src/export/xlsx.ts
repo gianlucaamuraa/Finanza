@@ -70,7 +70,8 @@ function summary(wb: ExcelJS.Workbook, r: Report) {
   line("Da accantonare questo mese", m.setAside?.amount ?? 0, "spese prevedibili + lungo termine");
   line("  di cui spese prevedibili", m.setAside?.planned ?? 0);
   line("  di cui lungo termine", m.setAside?.investment ?? 0);
-  line("Già accantonato", m.setAside?.paid ?? 0);
+  line("Già versato", m.setAside?.paid ?? 0, "rate e versamenti del mese segnati come versati");
+  line("Accantonato", m.setAside?.savingPaid ?? 0, "solo i soldi messi da parte (escluse le spese che non sono accantonamenti)");
   line("Al prossimo stipendio", m.nextSetAside?.amount ?? 0, `${r.range.nextPayday.split("-").reverse().join("/")} · per ${monthLabel(r.nextMonth)}`);
   if (m.byCategory.length) {
     section("Uscite del mese per categoria");

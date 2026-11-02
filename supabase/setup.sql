@@ -112,6 +112,9 @@ alter table public.investments add column if not exists annual_increase integer 
 alter table public.planned_expenses add column if not exists account_id integer references public.accounts(id) on delete set null;
 alter table public.planned_installments add column if not exists account_id integer references public.accounts(id) on delete set null;
 
+-- spese prevedibili che non sono un accantonamento (es. rate di un prestito): non contano in "Accantonato"
+alter table public.planned_expenses add column if not exists is_saving boolean not null default true;
+
 -- ripartizione dello stipendio collegata a una spesa prevedibile (la rata del mese risulta versata)
 alter table public.allocations add column if not exists planned_expense_id integer references public.planned_expenses(id) on delete set null;
 

@@ -51,7 +51,7 @@ export default function Dashboard() {
   const underQuota = q.avgSpent <= q.quota;
 
   // Patrimonio
-  const { liquidity, invested } = netWorth(accounts, balances, investments, current);
+  const { banks, cash, invested, total: netTotal } = netWorth(accounts, balances, investments, current);
   const linkedAccIds = new Set(investments.map((i) => i.accountId));
   const excluded = accounts.filter((a) => a.excludeFromNetWorth && !a.archived && a.kind !== "investimento" && !linkedAccIds.has(a.id));
 
@@ -138,10 +138,11 @@ export default function Dashboard() {
 
         <div className="card hero">
           <div className="label">Patrimonio totale</div>
-          <div className="big num">{eur(liquidity + invested)}</div>
+          <div className="big num">{eur(netTotal, 2)}</div>
           <div className="pills">
-            <div className="pill"><span>Liquidità</span><b className="num">{eur(liquidity)}</b></div>
-            <div className="pill"><span>Investito</span><b className="num">{eur(invested)}</b></div>
+            <div className="pill"><span>Banche</span><b className="num">{eur(banks, 2)}</b></div>
+            <div className="pill"><span>Contanti</span><b className="num">{eur(cash, 2)}</b></div>
+            {invested !== 0 && <div className="pill"><span>Investito</span><b className="num">{eur(invested, 2)}</b></div>}
           </div>
           {excluded.length > 0 && (
             <div style={{ fontSize: 12, opacity: 0.8, marginTop: 10 }}>

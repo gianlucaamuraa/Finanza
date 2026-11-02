@@ -27,7 +27,7 @@ export async function buildReport() {
     name: a.name, kind: a.kind, initial: a.initialBalance, balance: balances.get(a.id) ?? 0,
     archived: a.archived, excluded: a.excludeFromNetWorth, inQuota: a.includeInQuota,
   }));
-  const { liquidity, invested } = netWorth(accounts, balances, investments, current);
+  const { banks, cash, liquidity, invested } = netWorth(accounts, balances, investments, current);
 
   // mese in corso
   const incomes = mov.incomes.filter((i) => i.period === current);
@@ -88,7 +88,7 @@ export async function buildReport() {
 
   return {
     today, payday, current, range, nextMonth: addMonths(current, 1),
-    accounts: accountRows, liquidity, invested, netWorth: liquidity + invested,
+    accounts: accountRows, banks, cash, liquidity, invested, netWorth: liquidity + invested,
     month: {
       income, allocated, spent, quota,
       byCategory: [...byCat].sort((a, b) => b[1] - a[1]),

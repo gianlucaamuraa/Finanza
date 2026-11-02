@@ -109,7 +109,7 @@ export async function buildPdf(r: Report): Promise<Blob> {
   );
   y += 1;
   tiles([
-    ["Patrimonio", e(r.netWorth), `${e(r.liquidity)} liquidi`],
+    ["Patrimonio", e2(r.netWorth), `banche ${e(r.banks)} · contanti ${e(r.cash)}`],
     ["Entrate del mese", e(m.income), m.income ? (daRipartire > 0 ? `${e(daRipartire)} da ripartire` : "tutto ripartito") : "non inserite"],
     ["Uscite del mese", e(m.spent), `quota ${e2(Math.max(0, Math.round(m.quota.quota)))}/giorno`],
     ["Da accantonare", e(sa?.amount ?? 0), `accantonati ${e(sa?.paid ?? 0)}`],
@@ -117,7 +117,7 @@ export async function buildPdf(r: Report): Promise<Blob> {
 
   // In breve
   h1("In breve");
-  para(`Il patrimonio è di ${e(r.netWorth)}: ${e(r.liquidity)} di liquidità sui conti e ${e(r.invested)} investiti nel lungo termine.`);
+  para(`Il patrimonio è di ${e2(r.netWorth)}: ${e2(r.banks)} sui conti in banca e ${e2(r.cash)} in contanti` + (r.invested ? `, più ${e2(r.invested)} investiti nel lungo termine.` : "."));
   para(m.income > 0
     ? `Nel mese di ${mese(r.current)} sono entrati ${e(m.income)} e ne hai ripartiti ${e(m.allocated)} sui conti` +
       (daRipartire > 0 ? `; restano da ripartire ${e(daRipartire)}.` : daRipartire < 0 ? `, cioè ${e(-daRipartire)} più dello stipendio.` : ": lo stipendio è ripartito per intero.")
@@ -205,7 +205,7 @@ export async function buildPdf(r: Report): Promise<Blob> {
     ["Quota giornaliera", "Soldi ancora disponibili sui conti di spesa, divisi per i giorni che mancano al prossimo stipendio."],
     ["Accantonare", "Mettere da parte ogni mese la rata delle spese prevedibili e il versamento del lungo termine."],
     ["Rata versata", "Segnata a mano nella spesa prevedibile, oppure coperta da una ripartizione collegata alla spesa."],
-    ["Patrimonio", "Liquidità sui conti più quanto hai investito nel lungo termine."],
+    ["Patrimonio", "Soldi sui conti in banca, più i contanti, più quanto hai investito nel lungo termine. I conti segnati come esclusi (per esempio quello del prestito) non contano."],
   ], [], { width: W });
   para("I dati completi, movimento per movimento, sono nell'export Excel.", { muted: true, size: 9 });
 

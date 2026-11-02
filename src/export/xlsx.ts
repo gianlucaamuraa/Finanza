@@ -57,7 +57,8 @@ function summary(wb: ExcelJS.Workbook, r: Report) {
   const m = r.month;
   section("Patrimonio");
   line("Patrimonio totale", r.netWorth);
-  line("Liquidità", r.liquidity, "conti e contanti, esclusi quelli segnati come esclusi");
+  line("Banche", r.banks, "tutti i conti tranne i contanti, esclusi quelli segnati come esclusi");
+  line("Contanti", r.cash);
   line("Investito", r.invested, "versamenti di lungo termine e conti di investimento");
   section(`Ultimo stipendio · ${monthLabel(r.current)}`);
   line("Entrate", m.income);

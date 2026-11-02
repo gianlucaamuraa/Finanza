@@ -216,12 +216,17 @@ describe("net worth", async () => {
   const balances = new Map([[1, 500000], [2, 300000], [3, 100000]]);
   it("counts every account once", () => {
     const pac = { accountId: 2, recorded: new Map<string, number>(), linked: new Map([["2026-10", 20000]]) };
-    expect(netWorth(accounts, balances, [pac], "2026-11")).toEqual({ liquidity: 500000, invested: 300000, total: 800000 });
+    expect(netWorth(accounts, balances, [pac], "2026-11")).toEqual({ banks: 500000, cash: 0, liquidity: 500000, invested: 300000, total: 800000 });
   });
   it("adds manual contributions that did not go through the linked account", () => {
     const pac = { accountId: 2, recorded: new Map([["2026-09", 20000], ["2026-10", 20000]]), linked: new Map([["2026-10", 20000]]) };
     expect(netWorth(accounts, balances, [pac], "2026-11").invested).toBe(320000);
     const noAcc = { accountId: null, recorded: new Map([["2026-10", 20000], ["2026-12", 20000]]), linked: new Map<string, number>() };
-    expect(netWorth(accounts, balances, [noAcc], "2026-11")).toEqual({ liquidity: 800000, invested: 20000, total: 820000 });
+    expect(netWorth(accounts, balances, [noAcc], "2026-11")).toEqual({ banks: 800000, cash: 0, liquidity: 800000, invested: 20000, total: 820000 });
+  });
+  it("splits banks and cash", () => {
+    const acc = [...accounts, { id: 4, kind: "contanti", excludeFromNetWorth: false }];
+    const bal = new Map([...balances, [4, 50000]]);
+    expect(netWorth(acc, bal, [], "2026-11")).toMatchObject({ banks: 800000, cash: 50000, total: 850000 });
   });
 });

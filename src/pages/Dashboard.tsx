@@ -1,9 +1,9 @@
 import { Link } from "react-router";
-import { ChevronRight, CircleAlert, CircleCheck, Pencil } from "lucide-react";
+import { Briefcase, ChevronRight, CircleAlert, CircleCheck, Pencil, Plus } from "lucide-react";
 import { combine, useAccounts, useBalances, useBase, useCategories, useInvestments, usePeriod, usePlanned, useSpent } from "@/hooks";
 import { investedTotal, sumCells } from "@/lib/view";
 import { dailyQuota, plannedInfo } from "@/lib/calc";
-import { addDays, addMonths, dayLabel, diffDays, monthLabel } from "@/lib/dates";
+import { addDays, addMonths, dayLabel, dayLabelLong, diffDays, monthLabel } from "@/lib/dates";
 import { periodRange } from "@/lib/period";
 import { monthsOverview } from "@/lib/monthly";
 import { eur, sum } from "@/lib/money";
@@ -152,13 +152,51 @@ export default function Dashboard() {
           )}
         </div>
 
-        <Link to="/movimenti" className="card">
-          <div className="kpi-t">Entrate {monthLabel(current).split(" ")[0].toLowerCase()}</div>
-          <div className="kpi-v num pos">{eur(income)}</div>
-          <div className="kpi-s">
-            {income === 0 ? "non ancora inserite" : allocated >= income ? "ripartite al 100%" : `${eur(income - allocated)} da ripartire`}
-          </div>
-        </Link>
+        <Card id="dashboard-stipendio" title={<>
+            Ultimo stipendio
+            <Link to="/movimenti" className="link">Movimenti <ChevronRight size={14} /></Link>
+        </>}>
+          {income === 0 ? (
+            <Link to="/movimenti" className="income-box">
+              <span className="ico"><Briefcase size={18} /></span>
+              <span className="main"><b>Stipendio non ancora inserito</b><small>Tocca per aggiungerlo in Movimenti</small></span>
+              <Plus size={20} />
+            </Link>
+          ) : (
+            <>
+              <Link to="/movimenti" className="income-box">
+                <span className="ico"><Briefcase size={18} /></span>
+                <span className="main">
+                  <b>{period.incomes.length === 1 ? period.incomes[0].description : `${period.incomes.length} entrate`}</b>
+                  <small>accreditato il {dayLabelLong(period.incomes[0].date)}</small>
+                </span>
+                <span className="right num">+{eur(income)}</span>
+              </Link>
+              <span className="progress" style={{ display: "block", marginTop: 12 }}>
+                <i className={allocated > income ? "over" : ""} style={{ width: `${Math.min(100, (allocated / income) * 100)}%` }} />
+              </span>
+              <div className="mini-stats">
+                <div>
+                  <span>Ripartito</span>
+                  <b className="num">{eur(allocated)}</b>
+                  <small>{Math.round((allocated / income) * 100)}%</small>
+                </div>
+                <div>
+                  <span>{allocated > income ? "Oltre lo stipendio" : "Da ripartire"}</span>
+                  <b className={`num${allocated === income ? " pos" : allocated > income ? " neg" : ""}`}>
+                    {allocated === income ? <CircleCheck size={18} style={{ verticalAlign: -3 }} /> : eur(Math.abs(income - allocated))}
+                  </b>
+                  <small>{allocated === income ? "tutto ripartito" : allocated > income ? "da sistemare" : "ancora libero"}</small>
+                </div>
+                <div>
+                  <span>Accantonato</span>
+                  <b className="num">{eur(setAside?.paid ?? 0)}</b>
+                  <small>di {eur(setAside?.amount ?? 0)}</small>
+                </div>
+              </div>
+            </>
+          )}
+        </Card>
 
         <Card id="dashboard-accantonamenti" title={<>
             Accantonamenti

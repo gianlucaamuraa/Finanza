@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { Briefcase, ChevronRight, CircleAlert, CircleCheck, Pencil, Plus } from "lucide-react";
 import { combine, useAccounts, useBalances, useBase, useCategories, useInvestments, usePeriod, usePlanned, useSpent } from "@/hooks";
-import { investedTotal, sumCells } from "@/lib/view";
+import { netWorth, sumCells } from "@/lib/view";
 import { dailyQuota, plannedInfo } from "@/lib/calc";
 import { addDays, addMonths, dayLabel, dayLabelLong, diffDays, monthLabel } from "@/lib/dates";
 import { periodRange } from "@/lib/period";
@@ -51,15 +51,9 @@ export default function Dashboard() {
   const underQuota = q.avgSpent <= q.quota;
 
   // Patrimonio
-  const linkedAccIds = new Set(investments.map((i) => i.accountId).filter((x) => x != null));
-  // i conti collegati a un piano di lungo termine sono già contati in "Investito": non vanno anche nella liquidità
-  const liquidity = sum(
-    accounts.filter((a) => a.kind !== "investimento" && !a.excludeFromNetWorth && !linkedAccIds.has(a.id)).map((a) => balances.get(a.id) ?? 0),
-  );
-  const excluded = accounts.filter((a) => a.excludeFromNetWorth && !a.archived);
-  const invested =
-    sum(investments.map((i) => investedTotal(i, current))) +
-    sum(accounts.filter((a) => a.kind === "investimento" && !linkedAccIds.has(a.id)).map((a) => balances.get(a.id) ?? 0));
+  const { liquidity, invested } = netWorth(accounts, balances, investments, current);
+  const linkedAccIds = new Set(investments.map((i) => i.accountId));
+  const excluded = accounts.filter((a) => a.excludeFromNetWorth && !a.archived && a.kind !== "investimento" && !linkedAccIds.has(a.id));
 
   // Entrate e ripartizione
   const income = sum(period.incomes.map((i) => i.amount));

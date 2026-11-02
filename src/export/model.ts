@@ -5,7 +5,7 @@ import { dailyQuota, investmentCell, plannedAmount, plannedInfo, type PlannedSta
 import { addMonths, today as todayFn, type Month } from "@/lib/dates";
 import { periodOf, periodRange } from "@/lib/period";
 import { monthsOverview } from "@/lib/monthly";
-import { investedTotal } from "@/lib/view";
+import { investedTotal, netWorth } from "@/lib/view";
 
 const sum = (xs: number[]) => xs.reduce((a, x) => a + x, 0);
 const STATUS: Record<PlannedStatus, string> = { active: "In corso", future: "Futura", done: "Conclusa" };
@@ -27,14 +27,7 @@ export async function buildReport() {
     name: a.name, kind: a.kind, initial: a.initialBalance, balance: balances.get(a.id) ?? 0,
     archived: a.archived, excluded: a.excludeFromNetWorth, inQuota: a.includeInQuota,
   }));
-  const linkedAccIds = new Set(investments.map((i) => i.accountId).filter((x) => x != null));
-  // i conti collegati a un piano di lungo termine sono già contati in "Investito": non vanno anche nella liquidità
-  const liquidity = sum(
-    accounts.filter((a) => a.kind !== "investimento" && !a.excludeFromNetWorth && !linkedAccIds.has(a.id)).map((a) => balances.get(a.id) ?? 0),
-  );
-  const invested =
-    sum(investments.map((i) => investedTotal(i, current))) +
-    sum(accounts.filter((a) => a.kind === "investimento" && !linkedAccIds.has(a.id)).map((a) => balances.get(a.id) ?? 0));
+  const { liquidity, invested } = netWorth(accounts, balances, investments, current);
 
   // mese in corso
   const incomes = mov.incomes.filter((i) => i.period === current);

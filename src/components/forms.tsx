@@ -1,7 +1,10 @@
 import { useState } from "react";
 import * as A from "@/api";
 import { ACCOUNT_COLORS, ACCOUNT_ICONS, CATEGORY_ICONS, PLANNED_ICONS } from "@/lib/icon-keys";
-import { MESI_LUNGHI, addMonths, monthLabel, type Month } from "@/lib/dates";
+import { MESI_LUNGHI, addMonths, isDay, monthLabel, type Month } from "@/lib/dates";
+import { periodOf } from "@/lib/period";
+import { useNavigate } from "react-router";
+import { useSheetClose } from "./Sheet";
 import { eur, parseAmount, toInput } from "@/lib/money";
 import { equalSplit, type Installment } from "@/lib/calc";
 import { ActionForm, AmountInput, ConfirmButton, Field, Submit } from "./form";
@@ -65,21 +68,40 @@ function IconPicker({ name, icons, defaultValue, labels }: { name: string; icons
 
 // ---------- Entrata ----------
 
-export function IncomeForm({ period, defaultDate, initial }: { period: Month; defaultDate: string; initial?: { id: number; date: string; description: string; amount: number } }) {
+export function IncomeForm({ period, payday, defaultDate, initial }: {
+  period: Month; payday: number; defaultDate: string; initial?: { id: number; date: string; description: string; amount: number };
+}) {
+  const close = useSheetClose();
+  const navigate = useNavigate();
+  const [date, setDate] = useState(initial?.date ?? defaultDate);
+  // il mese dello stipendio lo decide la data di accredito, non la pagina da cui lo si inserisce
+  const target = isDay(date) ? periodOf(date, payday) : period;
   return (
-    <ActionForm action={A.saveIncome}>
+    <ActionForm
+      action={A.saveIncome}
+      onSuccess={() => {
+        close();
+        if (target !== period) navigate(`/movimenti?mese=${target}`);
+      }}
+    >
       <Hidden name="id" value={initial?.id} />
-      <Hidden name="period" value={period} />
+      <Hidden name="period" value={target} />
       <Field label="Importo (€)" htmlFor="amount"><AmountInput name="amount" big defaultValue={initial ? toInput(initial.amount) : ""} /></Field>
       <div className="field-row">
         <Field label="Descrizione" htmlFor="description">
           <input id="description" name="description" className="input" defaultValue={initial?.description ?? "Stipendio"} />
         </Field>
         <Field label="Data accredito" htmlFor="date">
-          <input id="date" name="date" type="date" className="input" defaultValue={initial?.date ?? defaultDate} required />
+          <input id="date" name="date" type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} required />
         </Field>
       </div>
-      <p className="note">Registrata nel mese di {monthLabel(period)}.</p>
+      {target === period ? (
+        <p className="note">Registrata nel mese di {monthLabel(period)}.</p>
+      ) : (
+        <p className="form-error" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+          Con questa data lo stipendio appartiene a <b>{monthLabel(target)}</b>: verrà registrato lì e ti porterò a quel mese, dove trovi la proposta di ripartizione.
+        </p>
+      )}
       <Submit />
       {initial && <ConfirmButton run={() => A.deleteIncome(initial.id)} />}
     </ActionForm>

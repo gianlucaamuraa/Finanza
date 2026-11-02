@@ -60,7 +60,7 @@ export default function Movimenti() {
           <Link to="/impostazioni" className="btn accent">Vai alle impostazioni</Link>
         </div>
       ) : tab === "stipendio" ? (
-        <Stipendio period={period} current={current ?? period} data={data} accounts={accounts} opts={opts} planned={planned} investments={qInv.data!} />
+        <Stipendio period={period} payday={payday} current={current ?? period} data={data} accounts={accounts} opts={opts} planned={planned} investments={qInv.data!} />
       ) : (
         <Uscite
           period={period}
@@ -82,8 +82,8 @@ export default function Movimenti() {
 type Acc = Account;
 type Opt = { id: number; name: string; icon: string; color: string };
 
-function Stipendio({ period, current, data, accounts, opts, planned, investments }: {
-  period: Month; current: Month; data: PeriodData; accounts: Acc[]; opts: Opt[]; planned: Planned[]; investments: Investment[];
+function Stipendio({ period, payday, current, data, accounts, opts, planned, investments }: {
+  period: Month; payday: number; current: Month; data: PeriodData; accounts: Acc[]; opts: Opt[]; planned: Planned[]; investments: Investment[];
 }) {
   const plannedById = new Map(planned.map((p) => [p.id, p]));
   // spese collegabili: quelle con una rata in questo mese, più quelle già collegate
@@ -105,19 +105,19 @@ function Stipendio({ period, current, data, accounts, opts, planned, investments
     <>
       <Card id="movimenti-1" title={<>
           Entrate
-          <SheetTrigger className="link" title="Nuova entrata" content={<IncomeForm period={period} defaultDate={data.range.start} />}>
+          <SheetTrigger className="link" title="Nuova entrata" content={<IncomeForm period={period} payday={payday} defaultDate={data.range.start} />}>
             <Plus size={14} /> Aggiungi
           </SheetTrigger>
       </>}>
         {data.incomes.length === 0 ? (
-          <SheetTrigger className="income-box" title="Nuova entrata" content={<IncomeForm period={period} defaultDate={data.range.start} />}>
+          <SheetTrigger className="income-box" title="Nuova entrata" content={<IncomeForm period={period} payday={payday} defaultDate={data.range.start} />}>
             <span className="ico"><Briefcase size={18} /></span>
             <span className="main"><b>Inserisci lo stipendio</b><small>Tocca per aggiungere l&apos;entrata del mese</small></span>
             <Plus size={20} />
           </SheetTrigger>
         ) : (
           data.incomes.map((i) => (
-            <SheetTrigger key={i.id} className="income-box" title="Modifica entrata" content={<IncomeForm period={period} defaultDate={data.range.start} initial={i} />}>
+            <SheetTrigger key={i.id} className="income-box" title="Modifica entrata" content={<IncomeForm period={period} payday={payday} defaultDate={data.range.start} initial={i} />}>
               <span className="ico"><Briefcase size={18} /></span>
               <span className="main"><b>{i.description}</b><small>accreditato il {dayLabelLong(i.date)}</small></span>
               <span className="right num">+{eur(i.amount, "auto")}</span>

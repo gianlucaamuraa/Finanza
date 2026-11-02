@@ -205,3 +205,23 @@ describe("history", async () => {
     expect(g.map((x) => x.map((y) => y.id))).toEqual([[3], [2, 1]]);
   });
 });
+
+describe("net worth", async () => {
+  const { netWorth } = await import("../src/lib/view");
+  const accounts = [
+    { id: 1, kind: "corrente", excludeFromNetWorth: false },
+    { id: 2, kind: "corrente", excludeFromNetWorth: false }, // conto collegato al PAC
+    { id: 3, kind: "risparmio", excludeFromNetWorth: true },
+  ];
+  const balances = new Map([[1, 500000], [2, 300000], [3, 100000]]);
+  it("counts every account once", () => {
+    const pac = { accountId: 2, recorded: new Map<string, number>(), linked: new Map([["2026-10", 20000]]) };
+    expect(netWorth(accounts, balances, [pac], "2026-11")).toEqual({ liquidity: 500000, invested: 300000, total: 800000 });
+  });
+  it("adds manual contributions that did not go through the linked account", () => {
+    const pac = { accountId: 2, recorded: new Map([["2026-09", 20000], ["2026-10", 20000]]), linked: new Map([["2026-10", 20000]]) };
+    expect(netWorth(accounts, balances, [pac], "2026-11").invested).toBe(320000);
+    const noAcc = { accountId: null, recorded: new Map([["2026-10", 20000], ["2026-12", 20000]]), linked: new Map<string, number>() };
+    expect(netWorth(accounts, balances, [noAcc], "2026-11")).toEqual({ liquidity: 800000, invested: 20000, total: 820000 });
+  });
+});

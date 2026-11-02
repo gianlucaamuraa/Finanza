@@ -359,7 +359,10 @@ function ProposalCard({ period, items, accounts, remaining }: {
 }) {
   const [on, setOn] = useState(() => new Set(items.map((x) => x.key)));
   const [amts, setAmts] = useState<Record<string, string>>(() => Object.fromEntries(items.map((x) => [x.key, toInput(x.amount)])));
-  const itemsTotal = sum(items.filter((x) => on.has(x.key)).map((x) => parseAmount(amts[x.key]) ?? 0));
+  // importo extra da aggiungere a una voce: il totale della voce è importo + extra
+  const [extras, setExtras] = useState<Record<string, string>>({});
+  const itemAmount = (k: string) => (parseAmount(amts[k]) ?? 0) + (parseAmount(extras[k] ?? "") ?? 0);
+  const itemsTotal = sum(items.filter((x) => on.has(x.key)).map((x) => itemAmount(x.key)));
   // Stipendio personale: la rimanenza dello stipendio, sul conto scelto (ricordato su questo dispositivo)
   const [salaryOn, setSalaryOn] = useState(remaining != null);
   const [salaryAcc, setSalaryAcc] = useState(() => {
@@ -405,9 +408,19 @@ function ProposalCard({ period, items, accounts, remaining }: {
                   ))}
                 </select>
                 <input
-                  name={`amt_${x.key}`} className="input num" inputMode="decimal" autoComplete="off" style={{ maxWidth: 120 }}
+                  name={`amt_${x.key}`} className="input num" inputMode="decimal" autoComplete="off" style={{ maxWidth: 110 }}
                   value={amts[x.key]} onChange={(e) => setAmts({ ...amts, [x.key]: e.target.value })} aria-label={`Importo per ${x.name}`}
                 />
+              </div>
+              <div className="field-row" style={{ width: "100%", marginTop: 8, alignItems: "center" }}>
+                <span className="muted" style={{ fontSize: 13, whiteSpace: "nowrap" }}>+ Aggiungi</span>
+                <input
+                  name={`extra_${x.key}`} className="input num" inputMode="decimal" autoComplete="off" placeholder="0" style={{ maxWidth: 110 }}
+                  value={extras[x.key] ?? ""} onChange={(e) => setExtras({ ...extras, [x.key]: e.target.value })} aria-label={`Importo da aggiungere a ${x.name}`}
+                />
+                <span style={{ flex: 1, textAlign: "right", fontSize: 13, whiteSpace: "nowrap" }}>
+                  = <b className="num">{eur(itemAmount(x.key), 2)}</b>
+                </span>
               </div>
             </div>
           ))}

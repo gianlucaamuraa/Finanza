@@ -283,8 +283,13 @@ export const acceptProposal = (period: Month, fd: FormData) => run(async () => {
   const rows = keys.map((k) => {
     const id = Number(k.slice(1));
     if (!/^[pis]\d+$/.test(k) || !Number.isInteger(id)) throw new InputError("Voce non valida");
-    const v = parseAmount(str(fd, `amt_${k}`));
-    if (v == null || v <= 0) throw new InputError("Importo non valido");
+    const base = parseAmount(str(fd, `amt_${k}`));
+    // importo da aggiungere alla voce (facoltativo)
+    const extraRaw = str(fd, `extra_${k}`);
+    const extra = extraRaw ? parseAmount(extraRaw) : 0;
+    if (base == null || extra == null) throw new InputError("Importo non valido");
+    const v = base + extra;
+    if (v <= 0) throw new InputError("Importo non valido");
     return {
       period, account_id: reqId(fd, `acc_${k}`, "Scegli un conto per ogni voce"), amount: v,
       note: str(fd, `name_${k}`).slice(0, 80) || null,

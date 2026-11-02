@@ -33,7 +33,8 @@ type InvestmentLike = { accountId: number | null; recorded: Map<Month, number>; 
 
 /**
  * Patrimonio: ogni conto conta una volta sola, con il suo saldo.
- * - Liquidità: conti normali (non di investimento, non collegati a un piano, non esclusi).
+ * - Liquidità: conti normali (non di investimento, non collegati a un piano, non esclusi),
+ *   divisa in banche (tutti i conti tranne i contanti) e contanti.
  * - Investito: conti di investimento e conti collegati a un piano di lungo termine (saldo del conto),
  *   più i versamenti registrati a mano che non sono passati da un conto
  *   (piani senza conto, o mesi in cui sul conto collegato non c'è una ripartizione).
@@ -43,10 +44,13 @@ export function netWorth(accounts: AccountLike[], balances: Map<number, number>,
   const bal = (id: number) => balances.get(id) ?? 0;
   const isInvest = (a: AccountLike) => a.kind === "investimento" || linkedIds.has(a.id);
   // "escluso dal patrimonio" vale per i conti di liquidità; i conti di investimento contano sempre
-  const liquidity = accounts.filter((a) => !isInvest(a) && !a.excludeFromNetWorth).reduce((s, a) => s + bal(a.id), 0);
+  const liquid = accounts.filter((a) => !isInvest(a) && !a.excludeFromNetWorth);
+  const cash = liquid.filter((a) => a.kind === "contanti").reduce((s, a) => s + bal(a.id), 0);
+  const banks = liquid.filter((a) => a.kind !== "contanti").reduce((s, a) => s + bal(a.id), 0);
+  const liquidity = banks + cash;
   let invested = accounts.filter(isInvest).reduce((s, a) => s + bal(a.id), 0);
   for (const inv of investments)
     for (const [m, v] of inv.recorded)
       if (monthIndex(m) <= monthIndex(current) && (inv.accountId == null || !inv.linked.has(m))) invested += v;
-  return { liquidity, invested, total: liquidity + invested };
+  return { banks, cash, liquidity, invested, total: liquidity + invested };
 }

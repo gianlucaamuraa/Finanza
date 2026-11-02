@@ -68,7 +68,9 @@ export default function Dashboard() {
   // Spese prevedibili
   const plannedInfos = planned.map((p) => ({ p, i: plannedInfo(p, current) }));
   // stesso totale della card "Versamenti mese per mese": prevedibili + lungo termine
-  const setAside = monthsOverview(current, planned, investments).find((m) => m.month === current);
+  const overview = monthsOverview(current, planned, investments);
+  const setAside = overview.find((m) => m.month === current);
+  const nextSetAside = overview.find((m) => m.month === addMonths(current, 1));
   const upcoming = plannedInfos.filter((x) => x.i.status !== "done").slice(0, 3);
 
   // Uscite
@@ -167,6 +169,28 @@ export default function Dashboard() {
             </div>
           </Link>
         </div>
+
+        <Card id="dashboard-accantonamenti" title={<>
+            Accantonamenti
+            <Link to="/spese-prevedibili" className="link">Dettagli <ChevronRight size={14} /></Link>
+        </>}>
+          <div className="grid2" style={{ marginBottom: 0 }}>
+            <div>
+              <div className="kpi-t">Con l&apos;ultimo stipendio · {dayLabel(period.range.start)}</div>
+              <div className="kpi-v num" style={{ fontSize: 24 }}>{eur(setAside?.paid ?? 0)}</div>
+              <div className="kpi-s">accantonati di {eur(setAside?.amount ?? 0)}</div>
+              <span className="progress" style={{ display: "block" }}>
+                <i style={{ width: `${setAside?.amount ? Math.min(100, (setAside.paid / setAside.amount) * 100) : 0}%` }} />
+              </span>
+            </div>
+            <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 12 }}>
+              <div className="kpi-t">Al prossimo stipendio · {dayLabel(period.range.nextPayday)}</div>
+              <div className="kpi-v num" style={{ fontSize: 24 }}>{eur(nextSetAside?.amount ?? 0)}</div>
+              <div className="kpi-s">da accantonare per {monthLabel(addMonths(current, 1)).split(" ")[0].toLowerCase()}</div>
+              {!!nextSetAside?.investment && <div className="kpi-s">di cui {eur(nextSetAside.investment)} lungo termine</div>}
+            </div>
+          </div>
+        </Card>
 
         <Card id="dashboard-2" title={<>
             Uscite di {monthLabel(current).split(" ")[0].toLowerCase()}

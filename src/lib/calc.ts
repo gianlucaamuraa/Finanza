@@ -100,3 +100,20 @@ export function investmentYear(
     return { month, amount: 0, kind: "missing" };
   });
 }
+
+/** Totale delle rate di tutte le spese prevedibili, mese per mese (previsto e versato). */
+export function plannedByMonth(rowsList: [Month, Installment][][]) {
+  const map = new Map<Month, { amount: number; paid: number; count: number; paidCount: number }>();
+  for (const rows of rowsList)
+    for (const [m, r] of rows) {
+      const e = map.get(m) ?? { amount: 0, paid: 0, count: 0, paidCount: 0 };
+      e.amount += r.amount;
+      e.count++;
+      if (r.paid != null) {
+        e.paid += r.paid;
+        e.paidCount++;
+      }
+      map.set(m, e);
+    }
+  return [...map.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([month, e]) => ({ month, ...e }));
+}

@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Plus } from "lucide-react";
 import { combine, useBase, usePlanned } from "@/hooks";
-import { plannedInfo, type PlannedStatus } from "@/lib/calc";
-import { monthLabel } from "@/lib/dates";
+import { plannedByMonth, plannedInfo, type PlannedStatus } from "@/lib/calc";
+import { monthLabel, type Month } from "@/lib/dates";
 import { eur, sum } from "@/lib/money";
 import { IconBox } from "@/components/Icon";
 import { SheetTrigger } from "@/components/Sheet";
@@ -15,6 +16,7 @@ const TAG: Record<PlannedStatus, [string, string]> = { active: ["", "In corso"],
 
 export default function SpesePrevedibili() {
   const [sp] = useSearchParams();
+  const [showPast, setShowPast] = useState(false);
   const { settings, current } = useBase();
   const qPlanned = usePlanned();
   const st = combine(settings, qPlanned);
@@ -31,6 +33,8 @@ export default function SpesePrevedibili() {
   const order: Record<PlannedStatus, number> = { active: 0, future: 1, done: 2 };
   shown.sort((a, b) => order[a.i.status] - order[b.i.status]);
 
+  const months = plannedByMonth(items.map((x) => x.i.rows));
+
   return (
     <>
       <div className="card hero">
@@ -41,6 +45,8 @@ export default function SpesePrevedibili() {
           <div className="pill"><span>Già versato</span><b className="num">{eur(sum(active.map((x) => x.i.accrued)))}</b></div>
         </div>
       </div>
+
+      {months.length > 0 && <MonthlyCard months={months} current={current} showPast={showPast} onTogglePast={() => setShowPast(!showPast)} />}
 
       <div className="chips">
         {FILTERS.map(([k, l]) => (
@@ -85,5 +91,57 @@ export default function SpesePrevedibili() {
         <Plus size={28} />
       </SheetTrigger>
     </>
+  );
+}
+
+/** Quanto versare (e quanto è già stato versato) ogni mese per tutte le spese prevedibili insieme. */
+function MonthlyCard({ months, current, showPast, onTogglePast }: {
+  months: ReturnType<typeof plannedByMonth>;
+  current: Month;
+  showPast: boolean;
+  onTogglePast: () => void;
+}) {
+  const past = months.filter((m) => m.month < current);
+  const shown = showPast ? months : months.filter((m) => m.month >= current);
+  return (
+    <div className="card">
+      <div className="card-title">
+        Versamenti mese per mese
+        {past.length > 0 && (
+          <button type="button" className="link" style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }} onClick={onTogglePast}>
+            {showPast ? "Nascondi passati" : `Mostra passati (${past.length})`}
+          </button>
+        )}
+      </div>
+      {shown.length === 0 ? (
+        <p className="empty">Nessun versamento previsto da questo mese in poi.</p>
+      ) : (
+        <div className="inst-list" style={{ marginBottom: 0 }}>
+          {shown.map((m) => {
+            const done = m.paidCount === m.count;
+            return (
+              <div key={m.month} className={`inst${done ? " paid" : ""}${m.month === current ? " now" : ""}`}>
+                <div className="inst-row" style={{ cursor: "default" }}>
+                  <span className="inst-month">
+                    {monthLabel(m.month, false)}
+                    <em style={{ color: "var(--muted)", fontWeight: 500 }}>
+                      {m.month === current ? "questo mese · " : ""}{m.count} {m.count === 1 ? "spesa" : "spese"}
+                    </em>
+                  </span>
+                  <span className="num inst-amount">{eur(m.amount, 2)}</span>
+                  {done ? (
+                    <span className="tag">Versato</span>
+                  ) : m.paidCount > 0 ? (
+                    <span className="tag future num">{eur(m.paid, "auto")} versati</span>
+                  ) : (
+                    <span className="tag future">Da versare</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

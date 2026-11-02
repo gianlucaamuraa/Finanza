@@ -189,8 +189,8 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <span>Accantonato</span>
-                  <b className="num">{eur(setAside?.paid ?? 0)}</b>
-                  <small>di {eur(setAside?.amount ?? 0)}</small>
+                  <b className="num">{eur(setAside?.savingPaid ?? 0)}</b>
+                  <small>di {eur(setAside?.savingAmount ?? 0)}</small>
                 </div>
               </div>
             </>

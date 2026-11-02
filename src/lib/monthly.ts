@@ -3,7 +3,7 @@ import { addMonths, monthIndex, type Month } from "./dates";
 
 type PlannedLike = {
   id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month;
-  accountId: number | null; installments?: Map<Month, Installment>;
+  accountId: number | null; isSaving?: boolean; installments?: Map<Month, Installment>;
 };
 type InvestmentLike = {
   id: number; name: string; monthlyAmount: number; annualIncrease: number; startMonth: Month; endMonth: Month | null;
@@ -22,6 +22,8 @@ export type MonthEntry = {
   /** importo effettivamente versato (0 se non versato) */
   paidAmount: number;
   accountId: number | null;
+  /** soldi messi da parte (false per es. le rate di un prestito) */
+  saving: boolean;
 };
 
 /** Versamenti di un mese: tutte le rate delle spese prevedibili e i versamenti di lungo termine. */
@@ -32,7 +34,7 @@ export function monthEntries(month: Month, current: Month, planned: PlannedLike[
     if (!r) continue;
     const paid = r.paid != null;
     out.push({
-      key: `p${p.id}`, kind: "planned", name: p.name, icon: p.icon, rata: r.amount, paid, paidAmount: r.paid ?? 0,
+      key: `p${p.id}`, kind: "planned", name: p.name, icon: p.icon, rata: r.amount, paid, paidAmount: r.paid ?? 0, saving: p.isSaving !== false,
       // versata: conto scelto quando è stata segnata; da versare: conto predefinito della spesa
       accountId: paid ? r.accountId ?? null : r.accountId ?? p.accountId,
     });
@@ -44,7 +46,7 @@ export function monthEntries(month: Month, current: Month, planned: PlannedLike[
     const inPlan = monthIndex(month) >= monthIndex(inv.startMonth) && (!inv.endMonth || monthIndex(month) <= monthIndex(inv.endMonth));
     out.push({
       key: `i${inv.id}`, kind: "investment", name: inv.name, icon: "trending-up",
-      rata: inPlan ? plannedAmount(inv, month) : c.amount, paid, paidAmount: paid ? c.amount : 0, accountId: inv.accountId,
+      rata: inPlan ? plannedAmount(inv, month) : c.amount, paid, paidAmount: paid ? c.amount : 0, accountId: inv.accountId, saving: true,
     });
   }
   return out.sort((a, b) => b.rata - a.rata);
@@ -78,6 +80,9 @@ export function monthsOverview(current: Month, planned: PlannedLike[], investmen
         planned: sumOf(e.filter((x) => x.kind === "planned"), (x) => x.rata),
         investment: sumOf(e.filter((x) => x.kind === "investment"), (x) => x.rata),
         paid: sumOf(e, (x) => x.paidAmount),
+        // solo i soldi messi da parte (escluse per es. le rate di un prestito)
+        savingAmount: sumOf(e.filter((x) => x.saving), (x) => x.rata),
+        savingPaid: sumOf(e.filter((x) => x.saving), (x) => x.paidAmount),
         count: e.length,
         paidCount: e.filter((x) => x.paid).length,
       };

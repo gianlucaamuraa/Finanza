@@ -230,3 +230,15 @@ describe("net worth", async () => {
     expect(netWorth(acc, bal, [], "2026-11")).toMatchObject({ banks: 800000, cash: 50000, total: 850000 });
   });
 });
+
+describe("saving vs payments", async () => {
+  const { monthsOverview } = await import("../src/lib/monthly");
+  it("loan installments are not counted as set aside", () => {
+    const mk = (id: number, amount: number, isSaving: boolean) => ({
+      id, name: `s${id}`, icon: "tag", totalAmount: amount, startMonth: "2026-10", endMonth: "2026-10", accountId: null, isSaving,
+      installments: new Map([["2026-10", { amount, paid: amount }]]),
+    });
+    const m = monthsOverview("2026-10", [mk(1, 84206, true), mk(2, 30694, false)], [])[0];
+    expect(m).toMatchObject({ amount: 114900, paid: 114900, savingAmount: 84206, savingPaid: 84206 });
+  });
+});

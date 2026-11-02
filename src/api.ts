@@ -26,6 +26,8 @@ export type Planned = {
   id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null; spent: number;
   /** conto su cui si versano le rate (predefinito) */
   accountId: number | null;
+  /** false per le spese che non sono soldi messi da parte (es. rate di un prestito) */
+  isSaving: boolean;
   /** rate mese -> importo previsto e importo versato (null = non versata) */
   installments: Map<Month, Installment>;
   /** ripartizioni dello stipendio collegate a questa spesa, per mese */
@@ -153,7 +155,7 @@ export async function getPlanned(): Promise<Planned[]> {
   const sp = new Map(spent.map((r) => [n(r.planned_expense_id), n(r.spent)]));
   return list.map((r) => ({
     id: n(r.id), name: s(r.name), icon: s(r.icon), totalAmount: n(r.total_amount), startMonth: s(r.start_month), endMonth: s(r.end_month),
-    note: ns(r.note), spent: sp.get(n(r.id)) ?? 0, accountId: nn(r.account_id),
+    note: ns(r.note), spent: sp.get(n(r.id)) ?? 0, accountId: nn(r.account_id), isSaving: r.is_saving !== false,
     allocations: linkedAllocations(alloc.filter((a) => n(a.planned_expense_id) === n(r.id))),
     installments: new Map(
       inst.filter((x) => n(x.planned_expense_id) === n(r.id)).map((x) => [s(x.month), { amount: n(x.amount), paid: nn(x.paid_amount), accountId: nn(x.account_id) }]),
@@ -370,6 +372,8 @@ export const savePlanned = (fd: FormData) => run(async () => {
     name: name(fd), icon: oneOf(str(fd, "icon"), PLANNED_ICONS, "calendar-clock"),
     total_amount: [...amounts.values()].reduce((a, x) => a + x, 0),
     start_month: start, end_month: end, note: str(fd, "note") || null, account_id: optId(fd, "accountId"),
+    // la colonna si scrive solo se serve, così funziona anche prima di rieseguire lo script del database
+    ...(fd.get("isSaving") !== "on" || fd.get("wasNotSaving") === "1" ? { is_saving: fd.get("isSaving") === "on" } : {}),
   };
   let id = optId(fd, "id");
   if (id) await q(sb().from("planned_expenses").update(v).eq("id", id));

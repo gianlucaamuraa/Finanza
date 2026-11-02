@@ -112,7 +112,7 @@ export async function buildPdf(r: Report): Promise<Blob> {
     ["Patrimonio", e2(r.netWorth), `banche ${e(r.banks)} · contanti ${e(r.cash)}`],
     ["Entrate del mese", e(m.income), m.income ? (daRipartire > 0 ? `${e(daRipartire)} da ripartire` : "tutto ripartito") : "non inserite"],
     ["Uscite del mese", e(m.spent), `quota ${e2(Math.max(0, Math.round(m.quota.quota)))}/giorno`],
-    ["Da accantonare", e(sa?.amount ?? 0), `accantonati ${e(sa?.paid ?? 0)}`],
+    ["Da accantonare", e(sa?.amount ?? 0), `accantonati ${e(sa?.savingPaid ?? 0)}`],
   ]);
 
   // In breve
@@ -124,7 +124,7 @@ export async function buildPdf(r: Report): Promise<Blob> {
     : `Lo stipendio di ${mese(r.current)} non è ancora stato inserito.`);
   para(`Finora hai speso ${e(m.spent)}. La quota giornaliera, cioè quanto puoi spendere ogni giorno fino al prossimo stipendio, è di ${e2(Math.max(0, Math.round(m.quota.quota)))} per i prossimi ${m.quota.daysLeft} giorni.`);
   para(
-    `Questo mese vanno accantonati ${e(sa?.amount ?? 0)} (${e(sa?.planned ?? 0)} per le spese prevedibili e ${e(sa?.investment ?? 0)} per il lungo termine); finora ne hai accantonati ${e(sa?.paid ?? 0)}. ` +
+    `Questo mese vanno accantonati ${e(sa?.amount ?? 0)} (${e(sa?.planned ?? 0)} per le spese prevedibili e ${e(sa?.investment ?? 0)} per il lungo termine); finora ne hai versati ${e(sa?.paid ?? 0)}, di cui ${e(sa?.savingPaid ?? 0)} messi da parte. ` +
     `Con il prossimo stipendio, il ${dateLong(r.range.nextPayday)}, dovrai accantonare ${e(next?.amount ?? 0)}.`,
   );
 

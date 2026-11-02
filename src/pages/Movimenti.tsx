@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Briefcase, ChevronRight, CircleCheck, Plus } from "lucide-react";
 import * as A from "@/api";
@@ -11,7 +11,7 @@ import { plannedInfo } from "@/lib/calc";
 import { allocationProposal } from "@/lib/monthly";
 import { eur, parseAmount, sum, toInput } from "@/lib/money";
 import { IconBox } from "@/components/Icon";
-import { SheetTrigger } from "@/components/Sheet";
+import { Sheet, SheetTrigger, useSheetClose } from "@/components/Sheet";
 import { AllocationForm, ExpenseForm, IncomeForm, type PlannedLinkOpt } from "@/components/forms";
 import { ActionForm, Submit } from "@/components/form";
 import { LoadError, MonthNav, PageSkeleton, pctClass } from "@/components/ui";
@@ -93,6 +93,14 @@ function Stipendio({ period, payday, current, data, accounts, opts, planned, inv
     .filter(({ p, rata }) => rata != null || linkedIds.has(p.id))
     .map(({ p, rata }) => ({ id: p.id, name: p.name, rata, accountId: p.accountId }));
   const proposal = allocationProposal(period, current, planned, investments);
+  // dopo aver inserito uno stipendio la proposta si apre da sola
+  const [sp, setSp] = useSearchParams();
+  const autoOpen = sp.get("proponi") === "1";
+  const closeAuto = () => {
+    const n = new URLSearchParams(sp);
+    n.delete("proponi");
+    setSp(n, { replace: true });
+  };
   const qBalances = useBalances();
   const balances = qBalances.data ?? new Map<number, number>();
   const accById = new Map(accounts.map((a) => [a.id, a]));
@@ -100,6 +108,7 @@ function Stipendio({ period, payday, current, data, accounts, opts, planned, inv
   const allocated = sum(data.allocations.map((a) => a.amount));
   const remaining = income - allocated;
   const base = Math.max(income, 1);
+  const showProposal = proposal.length > 0 || (income > 0 && remaining > 0);
 
   return (
     <>
@@ -167,7 +176,12 @@ function Stipendio({ period, payday, current, data, accounts, opts, planned, inv
         )}
       </Card>
 
-      {(proposal.length > 0 || (income > 0 && remaining > 0)) && <ProposalCard key={`${period}-${proposal.map((x) => x.key).join()}`} period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} />}
+      {showProposal && <ProposalCard key={`${period}-${proposal.map((x) => x.key).join()}`} period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} />}
+      {showProposal && autoOpen && (
+        <Sheet title={`Ripartisci lo stipendio di ${monthLabel(period)}`} onClose={closeAuto}>
+          <ProposalCard inSheet period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} />
+        </Sheet>
+      )}
 
       <Card id="movimenti-2" title={<>
           Conti e contanti
@@ -354,9 +368,10 @@ function Uscite({
  */
 const SALARY_ACC_KEY = "finanza-conto-stipendio-personale";
 
-function ProposalCard({ period, items, accounts, remaining }: {
-  period: Month; items: ReturnType<typeof allocationProposal>; accounts: Opt[]; remaining: number | null;
+function ProposalCard({ period, items, accounts, remaining, inSheet }: {
+  period: Month; items: ReturnType<typeof allocationProposal>; accounts: Opt[]; remaining: number | null; inSheet?: boolean;
 }) {
+  const close = useSheetClose();
   const [on, setOn] = useState(() => new Set(items.map((x) => x.key)));
   const [amts, setAmts] = useState<Record<string, string>>(() => Object.fromEntries(items.map((x) => [x.key, toInput(x.amount)])));
   // importo extra da aggiungere a una voce: il totale della voce è importo + extra
@@ -385,11 +400,11 @@ function ProposalCard({ period, items, accounts, remaining }: {
     return n;
   });
   return (
-    <Card id="movimenti-proposta" title={<>Proposta di ripartizione</>}>
+    <ProposalFrame inSheet={inSheet}>
       <p className="note" style={{ marginTop: 0 }}>
         Rate e versamenti di {monthLabel(period)} non ancora coperti{showSalary ? " e, in fondo, il resto dello stipendio" : ""}. Controlla importi e conti, poi accetta: le rate risulteranno versate.
       </p>
-      <ActionForm action={(fd) => A.acceptProposal(period, fd)} onSuccess={() => {}}>
+      <ActionForm action={(fd) => A.acceptProposal(period, fd)} onSuccess={close}>
         <div className="list" style={{ marginBottom: 12 }}>
           {items.map((x) => (
             <div key={x.key} className="item" style={{ cursor: "default", flexWrap: "wrap", opacity: on.has(x.key) ? 1 : 0.5 }}>
@@ -463,6 +478,17 @@ function ProposalCard({ period, items, accounts, remaining }: {
         </div>
         <Submit className="btn accent" pendingText="Creazione…">Accetta e crea {count} {count === 1 ? "ripartizione" : "ripartizioni"}</Submit>
       </ActionForm>
-    </Card>
+    </ProposalFrame>
+  );
+}
+
+/** La proposta è sempre aperta: nella pagina come card (senza freccia), oppure dentro il foglio che si apre da solo. */
+function ProposalFrame({ inSheet, children }: { inSheet?: boolean; children: ReactNode }) {
+  if (inSheet) return <>{children}</>;
+  return (
+    <div className="card" style={{ borderColor: "var(--accent)" }}>
+      <div className="card-title">Proposta di ripartizione</div>
+      {children}
+    </div>
   );
 }

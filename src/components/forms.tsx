@@ -81,7 +81,9 @@ export function IncomeForm({ period, payday, defaultDate, initial }: {
       action={A.saveIncome}
       onSuccess={() => {
         close();
-        if (target !== period) navigate(`/movimenti?mese=${target}`);
+        // nuovo stipendio: si apre il mese giusto con la proposta di ripartizione già aperta
+        if (!initial) navigate(`/movimenti?mese=${target}&proponi=1`);
+        else if (target !== period) navigate(`/movimenti?mese=${target}`);
       }}
     >
       <Hidden name="id" value={initial?.id} />
@@ -231,7 +233,10 @@ export function ExpenseForm({
 
 // ---------- Spesa prevedibile ----------
 
-type PlannedInit = { id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null; accountId: number | null; installments: Map<Month, Installment> };
+type PlannedInit = {
+  id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null;
+  accountId: number | null; isSaving: boolean; installments: Map<Month, Installment>;
+};
 
 /** Selettore del conto su cui si versano le rate (facoltativo). */
 export function AccountSelect({ accounts, defaultValue, label = "Conto dei versamenti (opzionale)", id = "accountId" }: { accounts: AccountOpt[]; defaultValue?: number | null; label?: string; id?: string }) {
@@ -257,6 +262,14 @@ export function PlannedForm({ defaultStart, initial, accounts }: { defaultStart:
       </Field>
       <PlannedAmounts initial={initial} defaultStart={defaultStart} />
       <AccountSelect accounts={accounts} defaultValue={initial?.accountId} />
+      <div className="field">
+        <label className="toggle">
+          Conta come accantonamento
+          <input type="checkbox" name="isSaving" defaultChecked={initial?.isSaving ?? true} />
+        </label>
+        <p className="note" style={{ margin: "4px 0 0" }}>Togli la spunta per le rate di un prestito o altri pagamenti: restano nella ripartizione, ma non in "Accantonato".</p>
+      </div>
+      <Hidden name="wasNotSaving" value={initial && !initial.isSaving ? "1" : undefined} />
       <div className="field">
         <span className="label">Icona</span>
         <IconPicker name="icon" icons={PLANNED_ICONS} defaultValue={initial?.icon} />

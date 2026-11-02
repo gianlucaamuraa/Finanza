@@ -1,4 +1,4 @@
-// Raccoglie tutti i dati e calcola i riepiloghi per l'export in Excel e Word.
+// Raccoglie tutti i dati e calcola i riepiloghi per l'export in Excel e PDF.
 
 import * as A from "@/api";
 import { dailyQuota, investmentCell, plannedAmount, plannedInfo, type PlannedStatus } from "@/lib/calc";

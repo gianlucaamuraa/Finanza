@@ -16,7 +16,7 @@ App web personale e responsive per gestire le proprie finanze. Si usa dal telefo
   - ripartizione dello stipendio
   - prossime scadenze
   - andamento del PAC
-  - export di tutti i dati in Excel (un foglio per sezione) e in Word (resoconto scritto)
+  - export di tutti i dati in Excel (un foglio per sezione) e in PDF (resoconto scritto)
 - **Movimenti**: mese per mese, con due schede.
   - *Stipendio*: entrata e ripartizione sui conti. Si può copiare la ripartizione dal mese precedente.
     - ogni ripartizione si può collegare a una spesa prevedibile: la rata di quel mese risulta versata;

@@ -28,7 +28,10 @@ export async function buildReport() {
     archived: a.archived, excluded: a.excludeFromNetWorth, inQuota: a.includeInQuota,
   }));
   const linkedAccIds = new Set(investments.map((i) => i.accountId).filter((x) => x != null));
-  const liquidity = sum(accounts.filter((a) => a.kind !== "investimento" && !a.excludeFromNetWorth).map((a) => balances.get(a.id) ?? 0));
+  // i conti collegati a un piano di lungo termine sono già contati in "Investito": non vanno anche nella liquidità
+  const liquidity = sum(
+    accounts.filter((a) => a.kind !== "investimento" && !a.excludeFromNetWorth && !linkedAccIds.has(a.id)).map((a) => balances.get(a.id) ?? 0),
+  );
   const invested =
     sum(investments.map((i) => investedTotal(i, current))) +
     sum(accounts.filter((a) => a.kind === "investimento" && !linkedAccIds.has(a.id)).map((a) => balances.get(a.id) ?? 0));

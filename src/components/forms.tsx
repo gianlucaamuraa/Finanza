@@ -88,20 +88,58 @@ export function IncomeForm({ period, defaultDate, initial }: { period: Month; de
 
 // ---------- Ripartizione ----------
 
-export function AllocationForm({ period, accounts, initial, suggested }: { period: Month; accounts: AccountOpt[]; initial?: { id: number; accountId: number; amount: number; note: string | null }; suggested?: number }) {
+/** Spesa prevedibile collegabile a una ripartizione, con la rata del mese (se c'è). */
+export type PlannedLinkOpt = { id: number; name: string; rata: number | null; accountId: number | null };
+
+export function AllocationForm({ period, accounts, planned = [], initial, suggested }: {
+  period: Month; accounts: AccountOpt[]; planned?: PlannedLinkOpt[];
+  initial?: { id: number; accountId: number; amount: number; note: string | null; plannedExpenseId: number | null }; suggested?: number;
+}) {
+  const [linked, setLinked] = useState<number | null>(initial?.plannedExpenseId ?? null);
+  const [acc, setAcc] = useState<number | undefined>(initial?.accountId ?? accounts[0]?.id);
+  const [amt, setAmt] = useState(initial ? toInput(initial.amount) : suggested && suggested > 0 ? toInput(suggested) : "");
+  const link = planned.find((p) => p.id === linked);
+  const pick = (id: number | null) => {
+    setLinked(id);
+    const p = planned.find((x) => x.id === id);
+    // proposta: importo della rata del mese e conto della spesa, se indicati
+    if (p && !initial) {
+      if (p.rata) setAmt(toInput(p.rata));
+      if (p.accountId != null && accounts.some((a) => a.id === p.accountId)) setAcc(p.accountId);
+    }
+  };
   return (
     <ActionForm action={A.saveAllocation}>
       <Hidden name="id" value={initial?.id} />
       <Hidden name="period" value={period} />
+      <Hidden name="hadPlanned" value={initial?.plannedExpenseId != null ? "1" : undefined} />
+      {planned.length > 0 && (
+        <Field label="Per la spesa prevedibile (opzionale)" htmlFor="plannedExpenseId">
+          <select id="plannedExpenseId" name="plannedExpenseId" className="input" value={linked ?? ""} onChange={(e) => pick(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">Nessuna</option>
+            {planned.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}{p.rata ? ` · rata ${eur(p.rata, "auto")}` : ""}</option>
+            ))}
+          </select>
+        </Field>
+      )}
+      {link && (
+        <p className="note" style={{ marginTop: -6 }}>
+          {link.rata ? `La rata di ${monthLabel(period)} di ${link.name} risulterà versata con questo importo.` : `${link.name} non ha una rata in ${monthLabel(period)}: il collegamento non conta come versamento.`}
+        </p>
+      )}
       <Field label="Conto di destinazione" htmlFor="accountId">
-        <select id="accountId" name="accountId" className="input" defaultValue={initial?.accountId ?? accounts[0]?.id} required>
+        <select id="accountId" name="accountId" className="input" value={acc ?? ""} onChange={(e) => setAcc(Number(e.target.value))} required>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
         </select>
       </Field>
       <Field label="Importo (€)" htmlFor="amount">
-        <AmountInput name="amount" big defaultValue={initial ? toInput(initial.amount) : suggested && suggested > 0 ? toInput(suggested) : ""} />
+        <input
+          id="amount" name="amount" className="input num big" inputMode="decimal" autoComplete="off" placeholder="0,00" required
+          value={amt} onChange={(e) => setAmt(e.target.value)}
+        />
       </Field>
       <Field label="Nota (opzionale)" htmlFor="note">
         <input id="note" name="note" className="input" defaultValue={initial?.note ?? ""} placeholder="es. extra per regali" />

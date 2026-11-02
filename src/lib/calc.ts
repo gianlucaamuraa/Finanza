@@ -4,7 +4,10 @@ import type { PeriodRange } from "./period";
 export type PlannedStatus = "future" | "active" | "done";
 
 /** Rata: importo previsto, importo versato (null = non versata) e conto su cui è stata versata. */
-export type Installment = { amount: number; paid: number | null; accountId?: number | null };
+export type Installment = { amount: number; paid: number | null; accountId?: number | null; fromAllocation?: boolean };
+
+/** Ripartizioni dello stipendio collegate a una spesa prevedibile, per mese: importo totale e conto. */
+export type LinkedAllocations = Map<Month, { amount: number; accountId: number }>;
 
 /** Divide un totale in rate uguali sui mesi indicati (l'ultima assorbe gli arrotondamenti). */
 export function equalSplit(total: number, months: Month[]): Map<Month, number> {
@@ -19,7 +22,7 @@ export function equalSplit(total: number, months: Month[]): Map<Month, number> {
  * Senza rate salvate il totale è diviso in rate uguali e nulla risulta versato.
  */
 export function plannedInfo(
-  p: { totalAmount: number; startMonth: Month; endMonth: Month; installments?: Map<Month, Installment> },
+  p: { totalAmount: number; startMonth: Month; endMonth: Month; installments?: Map<Month, Installment>; allocations?: LinkedAllocations },
   current: Month,
 ) {
   let rows: [Month, Installment][];
@@ -29,6 +32,12 @@ export function plannedInfo(
     for (let m = p.startMonth; monthIndex(m) <= monthIndex(p.endMonth); m = monthFromIndex(monthIndex(m) + 1)) months.push(m);
     rows = [...equalSplit(p.totalAmount, months)].map(([m, amount]) => [m, { amount, paid: null }]);
   }
+  // una ripartizione dello stipendio collegata alla spesa vale come versamento della rata di quel mese
+  if (p.allocations?.size)
+    rows = rows.map(([m, r]) => {
+      const a = p.allocations!.get(m);
+      return a ? [m, { ...r, paid: a.amount, accountId: a.accountId, fromAllocation: true }] : [m, r];
+    });
   const first = rows[0]?.[0] ?? p.startMonth, last = rows[rows.length - 1]?.[0] ?? p.endMonth;
   const status: PlannedStatus = current < first ? "future" : current > last ? "done" : "active";
   const byMonth = new Map(rows);

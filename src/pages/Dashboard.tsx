@@ -152,23 +152,13 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="grid2">
-          <Link to="/movimenti" className="card">
-            <div className="kpi-t">Entrate {monthLabel(current).split(" ")[0].toLowerCase()}</div>
-            <div className="kpi-v num pos">{eur(income)}</div>
-            <div className="kpi-s">
-              {income === 0 ? "non ancora inserite" : allocated >= income ? "ripartite al 100%" : `${eur(income - allocated)} da ripartire`}
-            </div>
-          </Link>
-          <Link to="/spese-prevedibili" className="card">
-            <div className="kpi-t">Da accantonare</div>
-            <div className="kpi-v num">{eur(setAside?.amount ?? 0)}</div>
-            <div className="kpi-s">
-              {setAside?.investment ? `di cui ${eur(setAside.investment)} lungo termine` : "spese prevedibili"}
-              {setAside && setAside.paid > 0 && <span style={{ display: "block" }}>versato {eur(setAside.paid)}</span>}
-            </div>
-          </Link>
-        </div>
+        <Link to="/movimenti" className="card">
+          <div className="kpi-t">Entrate {monthLabel(current).split(" ")[0].toLowerCase()}</div>
+          <div className="kpi-v num pos">{eur(income)}</div>
+          <div className="kpi-s">
+            {income === 0 ? "non ancora inserite" : allocated >= income ? "ripartite al 100%" : `${eur(income - allocated)} da ripartire`}
+          </div>
+        </Link>
 
         <Card id="dashboard-accantonamenti" title={<>
             Accantonamenti

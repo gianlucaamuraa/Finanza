@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { combine, useAccounts, useBase, usePlanned } from "@/hooks";
 import { plannedByMonth, plannedInfo, type PlannedStatus } from "@/lib/calc";
 import { monthLabel, type Month } from "@/lib/dates";
@@ -146,6 +146,7 @@ function MonthlyCard({ months, current, planned, accounts, showPast, onTogglePas
                   ) : (
                     <span className="tag future">Da versare</span>
                   )}
+                  <ChevronRight size={16} className="muted" aria-hidden />
                 </SheetTrigger>
               </div>
             );

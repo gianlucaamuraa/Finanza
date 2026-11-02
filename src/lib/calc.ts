@@ -80,6 +80,26 @@ export function plannedAmount(inv: PlanLike, month: Month): number {
   return inv.monthlyAmount + (inv.annualIncrease ?? 0) * years;
 }
 
+/** Cella di un investimento in un mese: versato (registrato o da movimenti), pianificato, mancante o fuori piano. */
+export function investmentCell(
+  inv: PlanLike,
+  month: Month,
+  recorded: Map<Month, number>,
+  linked: Map<Month, number>,
+  currentMonth: Month,
+): MonthCell {
+  const inPlan =
+    monthIndex(month) >= monthIndex(inv.startMonth) &&
+    (!inv.endMonth || monthIndex(month) <= monthIndex(inv.endMonth));
+  if (recorded.has(month)) return { month, amount: recorded.get(month)!, kind: "recorded" };
+  if (linked.has(month) && monthIndex(month) <= monthIndex(currentMonth))
+    return { month, amount: linked.get(month)!, kind: "linked" };
+  if (!inPlan) return { month, amount: 0, kind: "none" };
+  if (monthIndex(month) >= monthIndex(currentMonth))
+    return { month, amount: plannedAmount(inv, month), kind: "planned" };
+  return { month, amount: 0, kind: "missing" };
+}
+
 export function investmentYear(
   inv: PlanLike,
   year: number,
@@ -87,34 +107,7 @@ export function investmentYear(
   linked: Map<Month, number>,
   currentMonth: Month,
 ): MonthCell[] {
-  return Array.from({ length: 12 }, (_, i) => {
-    const month = `${year}-${String(i + 1).padStart(2, "0")}`;
-    const inPlan =
-      monthIndex(month) >= monthIndex(inv.startMonth) &&
-      (!inv.endMonth || monthIndex(month) <= monthIndex(inv.endMonth));
-    if (recorded.has(month)) return { month, amount: recorded.get(month)!, kind: "recorded" };
-    if (linked.has(month) && monthIndex(month) <= monthIndex(currentMonth))
-      return { month, amount: linked.get(month)!, kind: "linked" };
-    if (!inPlan) return { month, amount: 0, kind: "none" };
-    if (monthIndex(month) >= monthIndex(currentMonth))
-      return { month, amount: plannedAmount(inv, month), kind: "planned" };
-    return { month, amount: 0, kind: "missing" };
-  });
-}
-
-/** Totale delle rate di tutte le spese prevedibili, mese per mese (previsto e versato). */
-export function plannedByMonth(rowsList: [Month, Installment][][]) {
-  const map = new Map<Month, { amount: number; paid: number; count: number; paidCount: number }>();
-  for (const rows of rowsList)
-    for (const [m, r] of rows) {
-      const e = map.get(m) ?? { amount: 0, paid: 0, count: 0, paidCount: 0 };
-      e.amount += r.amount;
-      e.count++;
-      if (r.paid != null) {
-        e.paid += r.paid;
-        e.paidCount++;
-      }
-      map.set(m, e);
-    }
-  return [...map.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([month, e]) => ({ month, ...e }));
+  return Array.from({ length: 12 }, (_, i) =>
+    investmentCell(inv, `${year}-${String(i + 1).padStart(2, "0")}`, recorded, linked, currentMonth),
+  );
 }

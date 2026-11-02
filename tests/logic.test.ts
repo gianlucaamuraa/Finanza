@@ -126,3 +126,36 @@ describe("annual increase", () => {
     expect(total).toBe(22050000); // € 220.500 come nel file Excel
   });
 });
+
+describe("monthly overview", async () => {
+  const { monthEntries, monthsOverview } = await import("../src/lib/monthly");
+  const planned = [{
+    id: 1, name: "Assicurazione", icon: "car", totalAmount: 30000, startMonth: "2026-10", endMonth: "2026-12", accountId: 2,
+    installments: new Map([
+      ["2026-10", { amount: 10000, paid: 10000, accountId: 3 }],
+      ["2026-11", { amount: 10000, paid: null }],
+      ["2026-12", { amount: 10000, paid: null }],
+    ]),
+  }];
+  const pac = {
+    id: 7, name: "PAC", monthlyAmount: 20000, annualIncrease: 0, startMonth: "2026-10", endMonth: null, accountId: 5,
+    recorded: new Map([["2026-10", 20000]]), linked: new Map<string, number>(),
+  };
+
+  it("lists planned installments and long-term contributions of a month", () => {
+    const e = monthEntries("2026-10", "2026-11", planned, [pac]);
+    expect(e.map((x) => [x.kind, x.rata, x.paid, x.accountId])).toEqual([
+      ["investment", 20000, true, 5],
+      ["planned", 10000, true, 3],
+    ]);
+    const nov = monthEntries("2026-11", "2026-11", planned, [pac]);
+    expect(nov.find((x) => x.kind === "planned")).toMatchObject({ paid: false, accountId: 2 });
+  });
+
+  it("sums both per month and shows open-ended plans for 12 months", () => {
+    const m = monthsOverview("2026-11", planned, [pac]);
+    expect(m[0]).toMatchObject({ month: "2026-10", amount: 30000, planned: 10000, investment: 20000, paid: 30000 });
+    expect(m.find((x) => x.month === "2026-11")).toMatchObject({ amount: 30000, paid: 0, count: 2 });
+    expect(m[m.length - 1].month).toBe("2027-10");
+  });
+});

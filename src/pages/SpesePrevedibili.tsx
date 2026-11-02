@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ChevronRight, Plus } from "lucide-react";
-import { combine, useAccounts, useBase, usePlanned } from "@/hooks";
-import { plannedByMonth, plannedInfo, type PlannedStatus } from "@/lib/calc";
+import { combine, useAccounts, useBase, useInvestments, usePlanned } from "@/hooks";
+import { plannedInfo, type PlannedStatus } from "@/lib/calc";
+import { monthEntries, monthsOverview } from "@/lib/monthly";
 import { monthLabel, type Month } from "@/lib/dates";
 import { eur, sum } from "@/lib/money";
-import type { Account, Planned } from "@/api";
+import type { Account, Investment, Planned } from "@/api";
 import { IconBox } from "@/components/Icon";
 import { SheetTrigger } from "@/components/Sheet";
 import { PlannedForm, type AccountOpt } from "@/components/forms";
@@ -21,10 +22,12 @@ export default function SpesePrevedibili() {
   const { settings, current } = useBase();
   const qPlanned = usePlanned();
   const qAcc = useAccounts();
-  const st = combine(settings, qPlanned, qAcc);
+  const qInv = useInvestments();
+  const st = combine(settings, qPlanned, qAcc, qInv);
   if (st.error) return <LoadError error={st.error} onRetry={st.retry} />;
   if (st.loading || !current) return <PageSkeleton />;
   const planned = qPlanned.data!;
+  const investments = qInv.data!;
   const allAccounts = qAcc.data!;
   const accounts = allAccounts.filter((a) => !a.archived);
   const f = sp.get("filtro");
@@ -37,20 +40,23 @@ export default function SpesePrevedibili() {
   const order: Record<PlannedStatus, number> = { active: 0, future: 1, done: 2 };
   shown.sort((a, b) => order[a.i.status] - order[b.i.status]);
 
-  const months = plannedByMonth(items.map((x) => x.i.rows));
+  // quadro generale: spese prevedibili + versamenti di lungo termine
+  const months = monthsOverview(current, planned, investments);
+  const now = months.find((m) => m.month === current);
 
   return (
     <>
       <div className="card hero">
-        <div className="label">Accantonamento mensile · {monthLabel(current)}</div>
-        <div className="big num">{eur(Math.round(sum(active.map((x) => x.i.rata))), 2)}</div>
+        <div className="label">Da accantonare · {monthLabel(current)}</div>
+        <div className="big num">{eur(now?.amount ?? 0, 2)}</div>
         <div className="pills">
-          <div className="pill"><span>Spese in corso</span><b>{active.length}</b></div>
-          <div className="pill"><span>Già versato</span><b className="num">{eur(sum(active.map((x) => x.i.accrued)))}</b></div>
+          <div className="pill"><span>Prevedibili ({active.length})</span><b className="num">{eur(now?.planned ?? 0, "auto")}</b></div>
+          <div className="pill"><span>Lungo termine</span><b className="num">{eur(now?.investment ?? 0, "auto")}</b></div>
+          <div className="pill"><span>Versato</span><b className="num">{eur(now?.paid ?? 0, "auto")}</b></div>
         </div>
       </div>
 
-      {months.length > 0 && <MonthlyCard months={months} current={current} planned={planned} accounts={allAccounts} showPast={showPast} onTogglePast={() => setShowPast(!showPast)} />}
+      {months.length > 0 && <MonthlyCard months={months} current={current} planned={planned} investments={investments} accounts={allAccounts} showPast={showPast} onTogglePast={() => setShowPast(!showPast)} />}
 
       <div className="chips">
         {FILTERS.map(([k, l]) => (
@@ -99,10 +105,11 @@ export default function SpesePrevedibili() {
 }
 
 /** Quanto versare (e quanto è già stato versato) ogni mese per tutte le spese prevedibili insieme. */
-function MonthlyCard({ months, current, planned, accounts, showPast, onTogglePast }: {
-  months: ReturnType<typeof plannedByMonth>;
+function MonthlyCard({ months, current, planned, investments, accounts, showPast, onTogglePast }: {
+  months: ReturnType<typeof monthsOverview>;
   current: Month;
   planned: Planned[];
+  investments: Investment[];
   accounts: Account[];
   showPast: boolean;
   onTogglePast: () => void;
@@ -130,12 +137,12 @@ function MonthlyCard({ months, current, planned, accounts, showPast, onTogglePas
                 <SheetTrigger
                   className="inst-row"
                   title={`Versamenti di ${monthLabel(m.month)}`}
-                  content={<MonthDetail month={m.month} current={current} planned={planned} accounts={accounts} />}
+                  content={<MonthDetail month={m.month} current={current} planned={planned} investments={investments} accounts={accounts} />}
                 >
                   <span className="inst-month">
                     {monthLabel(m.month, false)}
                     <em style={{ color: "var(--muted)", fontWeight: 500 }}>
-                      {m.month === current ? "questo mese · " : ""}{m.count} {m.count === 1 ? "spesa" : "spese"}
+                      {m.month === current ? "questo mese · " : ""}{m.count} {m.count === 1 ? "voce" : "voci"}
                     </em>
                   </span>
                   <span className="num inst-amount">{eur(m.amount, 2)}</span>
@@ -157,19 +164,12 @@ function MonthlyCard({ months, current, planned, accounts, showPast, onTogglePas
   );
 }
 
-/** Dettaglio di un mese: in quali spese prevedibili vanno i soldi, quanto, e su quali conti. */
-function MonthDetail({ month, current, planned, accounts }: { month: Month; current: Month; planned: Planned[]; accounts: AccountOpt[] }) {
+/** Dettaglio di un mese: dove vanno i soldi (spese prevedibili e lungo termine), quanto, e su quali conti. */
+function MonthDetail({ month, current, planned, investments, accounts }: {
+  month: Month; current: Month; planned: Planned[]; investments: Investment[]; accounts: AccountOpt[];
+}) {
   const byId = new Map(accounts.map((a) => [a.id, a]));
-  const entries = planned
-    .flatMap((p) => {
-      const r = plannedInfo(p, current).rows.find(([m]) => m === month)?.[1];
-      if (!r) return [];
-      const paid = r.paid != null;
-      // versata: conto scelto quando è stata segnata; da versare: conto predefinito della spesa
-      const accountId = paid ? r.accountId ?? null : r.accountId ?? p.accountId;
-      return [{ p, rata: r.amount, paid, paidAmount: r.paid ?? 0, amount: paid ? r.paid! : r.amount, accountId }];
-    })
-    .sort((a, b) => b.rata - a.rata);
+  const entries = monthEntries(month, current, planned, investments).map((e) => ({ ...e, amount: e.paid ? e.paidAmount : e.rata }));
 
   const total = sum(entries.map((e) => e.rata));
   const versato = sum(entries.map((e) => e.paidAmount));
@@ -192,7 +192,7 @@ function MonthDetail({ month, current, planned, accounts }: { month: Month; curr
       <div className="calc" style={{ marginTop: 0 }}>
         <div>
           <span>Totale del mese</span>
-          <small>{entries.length} {entries.length === 1 ? "spesa" : "spese"} · versato {eur(versato, 2)}</small>
+          <small>{entries.length} {entries.length === 1 ? "voce" : "voci"} · versato {eur(versato, 2)}</small>
         </div>
         <b className="num">{eur(total, 2)}</b>
       </div>
@@ -202,12 +202,16 @@ function MonthDetail({ month, current, planned, accounts }: { month: Month; curr
         {entries.map((e) => {
           const acc = accName(e.accountId);
           return (
-            <div className="item" key={e.p.id} style={{ cursor: "default" }}>
-              <IconBox name={e.p.icon} small />
+            <div className="item" key={e.key} style={{ cursor: "default" }}>
+              <IconBox name={e.icon} small />
               <div className="main">
-                <b>{e.p.name}</b>
+                <b>{e.name}</b>
                 <small>
-                  {total ? Math.round((e.rata / total) * 100) : 0}% del mese{acc ? ` · ${e.paid ? "su" : "andrà su"} ${acc}` : ""}
+                  {[
+                    e.kind === "investment" ? "Lungo termine" : null,
+                    `${total ? Math.round((e.rata / total) * 100) : 0}%`,
+                    acc ? `${e.paid ? "su" : "andrà su"} ${acc}` : null,
+                  ].filter(Boolean).join(" · ")}
                 </small>
               </div>
               <div className="right num">

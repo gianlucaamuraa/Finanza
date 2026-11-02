@@ -4,6 +4,7 @@ import { fillMissingContributions, type Investment } from "@/api";
 import { eur } from "@/lib/money";
 import { plannedAmount } from "@/lib/calc";
 import { addMonths, monthIndex } from "@/lib/dates";
+import { Card } from "@/components/Card";
 
 function missingTotal(inv: Investment, current: string) {
   const last = inv.endMonth && monthIndex(inv.endMonth) < monthIndex(current) ? inv.endMonth : addMonths(current, -1);
@@ -20,8 +21,7 @@ export function FillMissingButton({ inv, current, count }: { inv: Investment; cu
   const [armed, setArmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
-    <div className="card">
-      <div className="card-title">Mesi da registrare</div>
+    <Card id="fillmissingbutton-1" title={<>Mesi da registrare</>}>
       <p className="note" style={{ marginTop: 0 }}>
         Ci sono {count} {count === 1 ? "mese passato" : "mesi passati"} del piano senza versamento registrato.
         Puoi segnarli tutti come versati{inv.annualIncrease ? "" : ` (${eur(amount)} al mese)`} oppure toccarli uno per uno.
@@ -47,6 +47,6 @@ export function FillMissingButton({ inv, current, count }: { inv: Investment; cu
         <CircleCheck size={16} />
         {pending ? "Registrazione…" : armed ? `Conferma: registra ${eur(total)}` : "Segna tutti come versati"}
       </button>
-    </div>
+    </Card>
   );
 }

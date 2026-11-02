@@ -288,3 +288,10 @@ button.card, a.card { display: block; width: 100%; text-align: left; font: inher
 .inst.now { background: var(--accent-soft); margin: 0 -10px; padding: 0 10px; border-radius: 10px; }
 .inst-pay { padding: 4px 2px 12px; }
 .inst-pay .btn { margin-bottom: 8px; }
+
+/* card comprimibili */
+.card-head { cursor: pointer; user-select: none; }
+.card-head-main { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.card-toggle { background: none; border: none; padding: 2px; margin: -2px -4px -2px 0; color: var(--muted); cursor: pointer; display: inline-flex; transition: transform 0.15s; }
+.card.closed .card-toggle { transform: rotate(-90deg); }
+.card.closed .card-head { margin-bottom: 0; }

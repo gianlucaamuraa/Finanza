@@ -108,6 +108,10 @@ create unique index if not exists installment_unique on public.planned_installme
 -- aumento annuo del versamento PAC (aggiunto dopo la prima versione)
 alter table public.investments add column if not exists annual_increase integer not null default 0;
 
+-- conto delle spese prevedibili: predefinito per la spesa e conto effettivo di ogni rata versata
+alter table public.planned_expenses add column if not exists account_id integer references public.accounts(id) on delete set null;
+alter table public.planned_installments add column if not exists account_id integer references public.accounts(id) on delete set null;
+
 -- conti da non contare nel patrimonio (es. soldi già destinati a una rata)
 alter table public.accounts add column if not exists exclude_from_net_worth boolean not null default false;
 

@@ -20,6 +20,7 @@ App web personale e responsive per gestire le proprie finanze. Si usa dal telefo
   - *Stipendio*: entrata e ripartizione sui conti. Si può copiare la ripartizione dal mese precedente.
   - *Uscite*: spese per conto e categoria, speso rispetto ad assegnato, filtro per conto.
 - **Spese prevedibili**: importo, mese di inizio e mese di fine. La rata mensile viene calcolata in automatico.
+  - card *Versamenti mese per mese*: toccando un mese vedi su quali conti le rate sono state versate e su quali andranno versate (conto predefinito della spesa, o scelto quando segni la rata come versata).
 - **Lungo termine (PAC)**: versamenti mese per mese e anno per anno, mesi futuri pianificati, collegamento opzionale a un conto.
 - **Impostazioni**: conti e contanti, categorie, giorno dello stipendio, conti che contano per la quota.
 

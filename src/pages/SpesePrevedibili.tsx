@@ -13,6 +13,7 @@ import { SheetTrigger } from "@/components/Sheet";
 import { PlannedForm, type AccountOpt } from "@/components/forms";
 import { PlannedDetail } from "@/components/PlannedDetail";
 import { LoadError, PageSkeleton } from "@/components/ui";
+import { Card } from "@/components/Card";
 
 const FILTERS: [string, string][] = [["tutte", "Tutte"], ["active", "In corso"], ["future", "Future"], ["done", "Concluse"]];
 const TAG: Record<PlannedStatus, [string, string]> = { active: ["", "In corso"], future: ["future", "Futura"], done: ["done", "Conclusa"] };
@@ -143,15 +144,14 @@ function MonthlyCard({ months, current, planned, investments, accounts, showPast
   const past = months.filter((m) => m.month < current);
   const shown = showPast ? months : months.filter((m) => m.month >= current);
   return (
-    <div className="card">
-      <div className="card-title">
+    <Card id="speseprevedibili-1" title={<>
         Versamenti mese per mese
         {past.length > 0 && (
           <button type="button" className="link" style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }} onClick={onTogglePast}>
             {showPast ? "Nascondi passati" : `Mostra passati (${past.length})`}
           </button>
         )}
-      </div>
+    </>}>
       {shown.length === 0 ? (
         <p className="empty">Nessun versamento previsto da questo mese in poi.</p>
       ) : (
@@ -188,7 +188,7 @@ function MonthlyCard({ months, current, planned, investments, accounts, showPast
           })}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 

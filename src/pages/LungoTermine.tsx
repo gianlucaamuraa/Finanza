@@ -9,6 +9,7 @@ import { SheetTrigger } from "@/components/Sheet";
 import { ContributionForm, InvestmentForm } from "@/components/forms";
 import { LoadError, MonthBars, PageSkeleton } from "@/components/ui";
 import { FillMissingButton } from "./FillMissingButton";
+import { Card } from "@/components/Card";
 
 const KIND_NOTE: Record<string, string> = {
   recorded: "",
@@ -109,22 +110,20 @@ export default function LungoTermine() {
         ))}
       </div>
 
-      <div className="card">
-        <div className="card-title">
+      <Card id="lungotermine-1" title={<>
           Versamenti {year}
           <span className="num" style={{ color: "var(--text)", textTransform: "none", letterSpacing: 0 }}>
             {eur(done)}{plan > 0 ? ` + ${eur(plan)} pian.` : ""}
           </span>
-        </div>
+      </>}>
         <MonthBars cells={cells} />
         <div className="meta">
           <span>Versato</span>
           <span style={{ color: "#5fb3a8" }}>Tratteggiato: pianificato</span>
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-title">Mese per mese</div>
+      <Card id="lungotermine-2" title={<>Mese per mese</>}>
         <div className="months">
           {cells.map((c, i) => (
             <SheetTrigger
@@ -140,12 +139,11 @@ export default function LungoTermine() {
           ))}
         </div>
         <p className="note" style={{ marginTop: 12, marginBottom: 0 }}>Tocca un mese per registrare o correggere il versamento.</p>
-      </div>
+      </Card>
 
       {missing > 0 && <FillMissingButton inv={inv} current={current} count={missing} />}
 
-      <div className="card">
-        <div className="card-title">Riepilogo per anno</div>
+      <Card id="lungotermine-3" title={<>Riepilogo per anno</>}>
         {summary.map((s) => (
           <div className="yearrow" key={s.y}>
             <b>{s.y}</b>
@@ -156,7 +154,7 @@ export default function LungoTermine() {
             </span>
           </div>
         ))}
-      </div>
+      </Card>
 
       <div className="btn-row">
         <SheetTrigger className="btn ghost" title="Modifica piano" content={<InvestmentForm accounts={opts} defaultStart={current} initial={inv} />}>

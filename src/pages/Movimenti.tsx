@@ -12,6 +12,7 @@ import { SheetTrigger } from "@/components/Sheet";
 import { AllocationForm, ExpenseForm, IncomeForm } from "@/components/forms";
 import { LoadError, MonthNav, PageSkeleton, pctClass } from "@/components/ui";
 import { CopyPreviousButton } from "./CopyPreviousButton";
+import { Card } from "@/components/Card";
 
 function href(m: Month, tab: string, conto?: number | null) {
   const p = new URLSearchParams({ mese: m });
@@ -87,13 +88,12 @@ function Stipendio({ period, data, accounts, opts }: { period: Month; data: Peri
 
   return (
     <>
-      <div className="card">
-        <div className="card-title">
+      <Card id="movimenti-1" title={<>
           Entrate
           <SheetTrigger className="link" title="Nuova entrata" content={<IncomeForm period={period} defaultDate={data.range.start} />}>
             <Plus size={14} /> Aggiungi
           </SheetTrigger>
-        </div>
+      </>}>
         {data.incomes.length === 0 ? (
           <SheetTrigger className="income-box" title="Nuova entrata" content={<IncomeForm period={period} defaultDate={data.range.start} />}>
             <span className="ico"><Briefcase size={18} /></span>
@@ -147,13 +147,12 @@ function Stipendio({ period, data, accounts, opts }: { period: Month; data: Peri
             <span className="num">{eur(Math.abs(remaining), "auto")}</span>
           </div>
         )}
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-title">
+      <Card id="movimenti-2" title={<>
           Conti e contanti
           <Link to="/impostazioni" className="link">Gestisci <ChevronRight size={14} /></Link>
-        </div>
+      </>}>
         <div className="list">
           {accounts.filter((a) => !a.archived).map((a) => (
             <div className="item" key={a.id} style={{ cursor: "default" }}>
@@ -163,7 +162,7 @@ function Stipendio({ period, data, accounts, opts }: { period: Month; data: Peri
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       <SheetTrigger className="fab" title="Aggiungi alla ripartizione" ariaLabel="Aggiungi alla ripartizione" content={<AllocationForm period={period} accounts={opts} suggested={remaining} />}>
         <Plus size={28} />
@@ -245,8 +244,7 @@ function Uscite({
       )}
 
       {ids.length > 0 && (
-        <div className="card">
-          <div className="card-title">Per conto</div>
+        <Card id="movimenti-3" title={<>Per conto</>}>
           {ids.map((id) => {
             const a = accById.get(id);
             const s = sum(data.expenses.filter((e) => e.accountId === id).map((e) => e.amount));
@@ -262,11 +260,10 @@ function Uscite({
               </div>
             );
           })}
-        </div>
+        </Card>
       )}
 
-      <div className="card">
-        <div className="card-title">Per categoria</div>
+      <Card id="movimenti-4" title={<>Per categoria</>}>
         {cats.length === 0 ? (
           <p className="empty">Nessuna uscita.</p>
         ) : (
@@ -284,13 +281,12 @@ function Uscite({
             );
           })
         )}
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-title">
+      <Card id="movimenti-5" title={<>
           Elenco uscite
           <SheetTrigger className="link" title="Nuova uscita" content={newExpense}><Plus size={14} /> Aggiungi</SheetTrigger>
-        </div>
+      </>}>
         {days.length === 0 ? (
           <p className="empty">Nessuna uscita inserita per questo mese.</p>
         ) : (
@@ -322,7 +318,7 @@ function Uscite({
             </div>
           ))
         )}
-      </div>
+      </Card>
 
       <SheetTrigger className="fab" title="Nuova uscita" ariaLabel="Nuova uscita" content={newExpense}>
         <Plus size={28} />

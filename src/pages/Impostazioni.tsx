@@ -7,6 +7,7 @@ import { SheetTrigger } from "@/components/Sheet";
 import { AccountForm, CategoryForm, PaydayForm } from "@/components/forms";
 import { LogoutButton } from "@/components/Nav";
 import { LoadError, PageSkeleton } from "@/components/ui";
+import { Card } from "@/components/Card";
 
 export default function Impostazioni() {
   const { settings, payday } = useBase();
@@ -41,8 +42,7 @@ export default function Impostazioni() {
 
   return (
     <div style={{ maxWidth: 640 }}>
-      <div className="card">
-        <div className="card-title">Stipendio e quota giornaliera</div>
+      <Card id="impostazioni-1" title={<>Stipendio e quota giornaliera</>}>
         <SheetTrigger
           className="item"
           title="Stipendio e quota"
@@ -55,32 +55,29 @@ export default function Impostazioni() {
           </span>
           <ChevronRight size={18} className="muted" />
         </SheetTrigger>
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-title">
+      <Card id="impostazioni-2" title={<>
           Conti e contanti
           <SheetTrigger className="link" title="Nuovo conto" content={<AccountForm defaultColor={nextColor} />}><Plus size={14} /> Aggiungi</SheetTrigger>
-        </div>
+      </>}>
         <div className="list">{active.map(accountRow)}</div>
         {active.length === 0 && <p className="empty">Nessun conto. Aggiungine uno.</p>}
         <p className="note" style={{ marginTop: 12, marginBottom: 0 }}>
           Saldo = saldo iniziale + quanto ripartito sul conto − uscite registrate.
         </p>
-      </div>
+      </Card>
 
       {archived.length > 0 && (
-        <div className="card">
-          <div className="card-title">Conti archiviati</div>
+        <Card id="impostazioni-3" title={<>Conti archiviati</>}>
           <div className="list">{archived.map(accountRow)}</div>
-        </div>
+        </Card>
       )}
 
-      <div className="card">
-        <div className="card-title">
+      <Card id="impostazioni-4" title={<>
           Categorie di spesa
           <SheetTrigger className="link" title="Nuova categoria" content={<CategoryForm />}><Plus size={14} /> Aggiungi</SheetTrigger>
-        </div>
+      </>}>
         <div className="list">
           {categories.map((c) => (
             <SheetTrigger key={c.id} className="item" title="Modifica categoria" content={<CategoryForm initial={c} />}>
@@ -90,7 +87,7 @@ export default function Impostazioni() {
             </SheetTrigger>
           ))}
         </div>
-      </div>
+      </Card>
 
       <LogoutButton className="btn ghost" />
     </div>

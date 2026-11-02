@@ -5,11 +5,13 @@ import { investedTotal, sumCells } from "@/lib/view";
 import { dailyQuota, plannedInfo } from "@/lib/calc";
 import { addDays, addMonths, dayLabel, diffDays, monthLabel } from "@/lib/dates";
 import { periodRange } from "@/lib/period";
+import { monthsOverview } from "@/lib/monthly";
 import { eur, sum } from "@/lib/money";
 import { IconBox } from "@/components/Icon";
 import { SheetTrigger } from "@/components/Sheet";
 import { PaydayForm } from "@/components/forms";
 import { LoadError, MonthBars, PageSkeleton } from "@/components/ui";
+import { Card } from "@/components/Card";
 
 export default function Dashboard() {
   const { settings, today, payday, current } = useBase();
@@ -65,8 +67,8 @@ export default function Dashboard() {
 
   // Spese prevedibili
   const plannedInfos = planned.map((p) => ({ p, i: plannedInfo(p, current) }));
-  const toSetAside = sum(plannedInfos.filter((x) => x.i.status === "active").map((x) => x.i.rata));
-  const activeCount = plannedInfos.filter((x) => x.i.status === "active").length;
+  // stesso totale della card "Versamenti mese per mese": prevedibili + lungo termine
+  const setAside = monthsOverview(current, planned, investments).find((m) => m.month === current);
   const upcoming = plannedInfos.filter((x) => x.i.status !== "done").slice(0, 3);
 
   // Uscite
@@ -89,8 +91,7 @@ export default function Dashboard() {
   return (
     <div className="dash-grid">
       <div>
-        <div className="card">
-          <div className="card-title">
+        <Card id="dashboard-1" title={<>
             Quota giornaliera
             <SheetTrigger
               className="link"
@@ -99,7 +100,7 @@ export default function Dashboard() {
             >
               Stipendio il {payday} <Pencil size={13} />
             </SheetTrigger>
-          </div>
+        </>}>
           <div className="daily">
             <div style={{ minWidth: 0 }}>
               <div className="big num">
@@ -133,7 +134,7 @@ export default function Dashboard() {
                 : `Finora spendi in media ${eur(q.avgSpent, 2)}/giorno, più della quota.`}
             </div>
           )}
-        </div>
+        </Card>
 
         <div className="card hero">
           <div className="label">Patrimonio totale</div>
@@ -159,16 +160,18 @@ export default function Dashboard() {
           </Link>
           <Link to="/spese-prevedibili" className="card">
             <div className="kpi-t">Da accantonare</div>
-            <div className="kpi-v num">{eur(Math.round(toSetAside))}</div>
-            <div className="kpi-s">{activeCount} {activeCount === 1 ? "spesa prevedibile" : "spese prevedibili"}</div>
+            <div className="kpi-v num">{eur(setAside?.amount ?? 0)}</div>
+            <div className="kpi-s">
+              {setAside?.investment ? `di cui ${eur(setAside.investment)} lungo termine` : "spese prevedibili"}
+              {setAside && setAside.paid > 0 && <span style={{ display: "block" }}>versato {eur(setAside.paid)}</span>}
+            </div>
           </Link>
         </div>
 
-        <div className="card">
-          <div className="card-title">
+        <Card id="dashboard-2" title={<>
             Uscite di {monthLabel(current).split(" ")[0].toLowerCase()}
             <Link to="/movimenti?tab=uscite" className="link">Dettagli <ChevronRight size={14} /></Link>
-          </div>
+        </>}>
           <div className="kpi-v num" style={{ fontSize: 24 }}>{eur(spent, 2)}</div>
           <div className="kpi-s">
             {prevSpent > 0 || spent > 0
@@ -192,15 +195,14 @@ export default function Dashboard() {
               })}
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       <div>
-        <div className="card">
-          <div className="card-title">
+        <Card id="dashboard-3" title={<>
             Ripartizione stipendio
             <Link to="/movimenti" className="link">Dettagli <ChevronRight size={14} /></Link>
-          </div>
+        </>}>
           {split.length === 0 ? (
             <p className="empty">Nessuna ripartizione per questo mese.</p>
           ) : (
@@ -222,13 +224,12 @@ export default function Dashboard() {
               </div>
             </>
           )}
-        </div>
+        </Card>
 
-        <div className="card">
-          <div className="card-title">
+        <Card id="dashboard-4" title={<>
             Prossime scadenze
             <Link to="/spese-prevedibili" className="link">Tutte <ChevronRight size={14} /></Link>
-          </div>
+        </>}>
           {upcoming.length === 0 ? (
             <p className="empty">Nessuna spesa prevedibile in corso.</p>
           ) : (
@@ -245,13 +246,12 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="card">
-          <div className="card-title">
+        <Card id="dashboard-5" title={<>
             Lungo termine {year}
             <Link to="/lungo-termine" className="link">Apri <ChevronRight size={14} /></Link>
-          </div>
+        </>}>
           {investments.length === 0 ? (
             <p className="empty">Nessun PAC impostato.</p>
           ) : (
@@ -263,7 +263,7 @@ export default function Dashboard() {
               </div>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

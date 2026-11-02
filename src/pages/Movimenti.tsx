@@ -167,7 +167,7 @@ function Stipendio({ period, current, data, accounts, opts, planned, investments
         )}
       </Card>
 
-      {proposal.length > 0 && <ProposalCard key={`${period}-${proposal.map((x) => x.key).join()}`} period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} />}
+      {(proposal.length > 0 || (income > 0 && remaining > 0)) && <ProposalCard key={`${period}-${proposal.map((x) => x.key).join()}`} period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} />}
 
       <Card id="movimenti-2" title={<>
           Conti e contanti
@@ -352,12 +352,29 @@ function Uscite({
  * Proposta di ripartizione: rate del mese e versamenti di lungo termine non ancora coperti,
  * con importo e conto già compilati. Accettando si creano le ripartizioni (collegate alle spese).
  */
+const SALARY_ACC_KEY = "finanza-conto-stipendio-personale";
+
 function ProposalCard({ period, items, accounts, remaining }: {
   period: Month; items: ReturnType<typeof allocationProposal>; accounts: Opt[]; remaining: number | null;
 }) {
   const [on, setOn] = useState(() => new Set(items.map((x) => x.key)));
   const [amts, setAmts] = useState<Record<string, string>>(() => Object.fromEntries(items.map((x) => [x.key, toInput(x.amount)])));
-  const total = sum(items.filter((x) => on.has(x.key)).map((x) => parseAmount(amts[x.key]) ?? 0));
+  const itemsTotal = sum(items.filter((x) => on.has(x.key)).map((x) => parseAmount(amts[x.key]) ?? 0));
+  // Stipendio personale: la rimanenza dello stipendio, sul conto scelto (ricordato su questo dispositivo)
+  const [salaryOn, setSalaryOn] = useState(remaining != null);
+  const [salaryAcc, setSalaryAcc] = useState(() => {
+    let saved = "";
+    try { saved = localStorage.getItem(SALARY_ACC_KEY) ?? ""; } catch { /* storage non disponibile */ }
+    if (accounts.some((a) => String(a.id) === saved)) return saved;
+    const ing = accounts.find((a) => /\bing\b/i.test(a.name));
+    return ing ? String(ing.id) : "";
+  });
+  const [salaryEdit, setSalaryEdit] = useState<string | null>(null);
+  const salaryAuto = remaining != null ? Math.max(0, remaining - itemsTotal) : 0;
+  const salaryAmt = salaryEdit ?? toInput(salaryAuto);
+  const showSalary = remaining != null;
+  const total = itemsTotal + (showSalary && salaryOn ? parseAmount(salaryAmt) ?? 0 : 0);
+  const count = on.size + (showSalary && salaryOn ? 1 : 0);
   const toggle = (k: string) => setOn((prev) => {
     const n = new Set(prev);
     if (n.has(k)) n.delete(k);
@@ -367,7 +384,7 @@ function ProposalCard({ period, items, accounts, remaining }: {
   return (
     <Card id="movimenti-proposta" title={<>Proposta di ripartizione</>}>
       <p className="note" style={{ marginTop: 0 }}>
-        Rate e versamenti di {monthLabel(period)} non ancora coperti. Controlla importi e conti, poi accetta: le rate risulteranno versate.
+        Rate e versamenti di {monthLabel(period)} non ancora coperti{showSalary ? " e, in fondo, il resto dello stipendio" : ""}. Controlla importi e conti, poi accetta: le rate risulteranno versate.
       </p>
       <ActionForm action={(fd) => A.acceptProposal(period, fd)} onSuccess={() => {}}>
         <div className="list" style={{ marginBottom: 12 }}>
@@ -394,6 +411,35 @@ function ProposalCard({ period, items, accounts, remaining }: {
               </div>
             </div>
           ))}
+          {showSalary && (
+            <div className="item" style={{ cursor: "default", flexWrap: "wrap", opacity: salaryOn ? 1 : 0.5 }}>
+              <input type="checkbox" name="item" value="s0" checked={salaryOn} onChange={() => setSalaryOn(!salaryOn)} aria-label="Includi Stipendio personale" style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
+              <IconBox name="wallet" small />
+              <span className="main">
+                <b>Stipendio personale</b>
+                <small>{salaryEdit == null ? "il resto dello stipendio, calcolato in automatico" : "importo modificato a mano"}</small>
+              </span>
+              <input type="hidden" name="name_s0" value="Stipendio personale" />
+              <div className="field-row" style={{ width: "100%", marginTop: 8 }}>
+                <select
+                  name="acc_s0" className="input" value={salaryAcc} aria-label="Conto per Stipendio personale"
+                  onChange={(e) => {
+                    setSalaryAcc(e.target.value);
+                    try { localStorage.setItem(SALARY_ACC_KEY, e.target.value); } catch { /* storage non disponibile */ }
+                  }}
+                >
+                  <option value="" disabled>Scegli il conto</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+                <input
+                  name="amt_s0" className="input num" inputMode="decimal" autoComplete="off" style={{ maxWidth: 120 }}
+                  value={salaryAmt} onChange={(e) => setSalaryEdit(e.target.value)} aria-label="Importo per Stipendio personale"
+                />
+              </div>
+            </div>
+          )}
         </div>
         <div className="calc">
           <div>
@@ -402,7 +448,7 @@ function ProposalCard({ period, items, accounts, remaining }: {
           </div>
           <b className="num">{eur(total, 2)}</b>
         </div>
-        <Submit className="btn accent" pendingText="Creazione…">Accetta e crea {on.size} {on.size === 1 ? "ripartizione" : "ripartizioni"}</Submit>
+        <Submit className="btn accent" pendingText="Creazione…">Accetta e crea {count} {count === 1 ? "ripartizione" : "ripartizioni"}</Submit>
       </ActionForm>
     </Card>
   );

@@ -121,6 +121,22 @@ export async function getPeriod(period: Month, payday: number) {
 }
 export type PeriodData = Awaited<ReturnType<typeof getPeriod>>;
 
+/** Legge tutte le righe di una tabella, a pagine da 1000 (limite di Supabase per richiesta). */
+async function fetchAll(table: string, order: string): Promise<Row[]> {
+  const out: Row[] = [];
+  for (let from = 0; ; from += 1000) {
+    const page = await q<Row[]>(sb().from(table).select("*").order(order).order("id").range(from, from + 999));
+    out.push(...page);
+    if (page.length < 1000) return out;
+  }
+}
+
+/** Tutte le entrate, ripartizioni e uscite (per l'export). */
+export async function getAllMovements() {
+  const [inc, alloc, exp] = await Promise.all([fetchAll("incomes", "date"), fetchAll("allocations", "period"), fetchAll("expenses", "date")]);
+  return { incomes: inc.map(toIncome), allocations: alloc.map(toAllocation), expenses: exp.map(toExpense) };
+}
+
 export async function getBalances(): Promise<Map<number, number>> {
   const rows = await q<Row[]>(sb().from("account_balances").select("account_id,balance"));
   return new Map(rows.map((r) => [n(r.account_id), n(r.balance)]));
@@ -266,7 +282,7 @@ export const acceptProposal = (period: Month, fd: FormData) => run(async () => {
   if (!keys.length) throw new InputError("Scegli almeno una voce");
   const rows = keys.map((k) => {
     const id = Number(k.slice(1));
-    if (!/^[pi]\d+$/.test(k) || !Number.isInteger(id)) throw new InputError("Voce non valida");
+    if (!/^[pis]\d+$/.test(k) || !Number.isInteger(id)) throw new InputError("Voce non valida");
     const v = parseAmount(str(fd, `amt_${k}`));
     if (v == null || v <= 0) throw new InputError("Importo non valido");
     return {

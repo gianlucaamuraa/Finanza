@@ -16,10 +16,12 @@ App web personale e responsive per gestire le proprie finanze. Si usa dal telefo
   - ripartizione dello stipendio
   - prossime scadenze
   - andamento del PAC
+  - export di tutti i dati in Excel (un foglio per sezione) e in Word (resoconto scritto)
 - **Movimenti**: mese per mese, con due schede.
   - *Stipendio*: entrata e ripartizione sui conti. Si può copiare la ripartizione dal mese precedente.
     - ogni ripartizione si può collegare a una spesa prevedibile: la rata di quel mese risulta versata;
     - *Proposta di ripartizione*: rate e versamenti PAC del mese non ancora coperti, con importi e conti già compilati; accettando si creano le ripartizioni.
+      In fondo c'è *Stipendio personale*: il resto dello stipendio, sul conto scelto (proposto in automatico un conto con "ING" nel nome, poi quello usato l'ultima volta).
   - *Uscite*: spese per conto e categoria, speso rispetto ad assegnato, filtro per conto.
 - **Spese prevedibili**: importo, mese di inizio e mese di fine. La rata mensile viene calcolata in automatico.
   - card *Versamenti mese per mese*: toccando un mese vedi su quali conti le rate sono state versate e su quali andranno versate (conto predefinito della spesa, o scelto quando segni la rata come versata).

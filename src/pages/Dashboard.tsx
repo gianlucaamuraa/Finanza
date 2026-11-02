@@ -12,6 +12,7 @@ import { SheetTrigger } from "@/components/Sheet";
 import { PaydayForm } from "@/components/forms";
 import { LoadError, MonthBars, PageSkeleton } from "@/components/ui";
 import { Card } from "@/components/Card";
+import { ExportCard } from "@/components/ExportCard";
 
 export default function Dashboard() {
   const { settings, today, payday, current } = useBase();
@@ -199,24 +200,14 @@ export default function Dashboard() {
         </Card>
 
         <Card id="dashboard-accantonamenti" title={<>
-            Accantonamenti
+            Prossimo accantonamento
             <Link to="/spese-prevedibili" className="link">Dettagli <ChevronRight size={14} /></Link>
         </>}>
-          <div className="grid2" style={{ marginBottom: 0 }}>
-            <div>
-              <div className="kpi-t">Con l&apos;ultimo stipendio · {dayLabel(period.range.start)}</div>
-              <div className="kpi-v num" style={{ fontSize: 24 }}>{eur(setAside?.paid ?? 0)}</div>
-              <div className="kpi-s">accantonati di {eur(setAside?.amount ?? 0)}</div>
-              <span className="progress" style={{ display: "block" }}>
-                <i style={{ width: `${setAside?.amount ? Math.min(100, (setAside.paid / setAside.amount) * 100) : 0}%` }} />
-              </span>
-            </div>
-            <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 12 }}>
-              <div className="kpi-t">Al prossimo stipendio · {dayLabel(period.range.nextPayday)}</div>
-              <div className="kpi-v num" style={{ fontSize: 24 }}>{eur(nextSetAside?.amount ?? 0)}</div>
-              <div className="kpi-s">da accantonare per {monthLabel(addMonths(current, 1)).split(" ")[0].toLowerCase()}</div>
-              {!!nextSetAside?.investment && <div className="kpi-s">di cui {eur(nextSetAside.investment)} lungo termine</div>}
-            </div>
+          <div className="kpi-t">Al prossimo stipendio · {dayLabel(period.range.nextPayday)}</div>
+          <div className="kpi-v num" style={{ fontSize: 26 }}>{eur(nextSetAside?.amount ?? 0)}</div>
+          <div className="kpi-s">
+            da accantonare per {monthLabel(addMonths(current, 1)).split(" ")[0].toLowerCase()}
+            {!!nextSetAside?.investment && ` · prevedibili ${eur(nextSetAside.planned)} + lungo termine ${eur(nextSetAside.investment)}`}
           </div>
         </Card>
 
@@ -316,6 +307,8 @@ export default function Dashboard() {
             </>
           )}
         </Card>
+
+        <ExportCard />
       </div>
     </div>
   );

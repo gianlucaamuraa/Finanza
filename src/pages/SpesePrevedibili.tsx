@@ -142,7 +142,9 @@ function MonthlyCard({ months, current, planned, investments, accounts, showPast
                   <span className="inst-month">
                     {monthLabel(m.month, false)}
                     <em style={{ color: "var(--muted)", fontWeight: 500 }}>
-                      {m.month === current ? "questo mese · " : ""}{m.count} {m.count === 1 ? "voce" : "voci"}
+                      {m.month === current && <span style={{ display: "block", color: "var(--accent)", fontWeight: 600 }}>questo mese</span>}
+                      {m.planned > 0 && <span style={{ display: "block", whiteSpace: "nowrap" }}>Prevedibili {eur(m.planned, "auto")}</span>}
+                      {m.investment > 0 && <span style={{ display: "block", whiteSpace: "nowrap" }}>Lungo termine {eur(m.investment, "auto")}</span>}
                     </em>
                   </span>
                   <span className="num inst-amount">{eur(m.amount, 2)}</span>

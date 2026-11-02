@@ -84,3 +84,30 @@ export function monthsOverview(current: Month, planned: PlannedLike[], investmen
     })
     .filter((m) => m.count > 0);
 }
+
+/** Voce proposta per la ripartizione dello stipendio: una rata o un versamento di lungo termine non ancora coperti. */
+export type ProposalItem = {
+  key: string;
+  kind: "planned" | "investment";
+  id: number;
+  name: string;
+  icon: string;
+  amount: number;
+  accountId: number | null;
+};
+
+/**
+ * Proposta di ripartizione per un mese: rate delle spese prevedibili non ancora versate
+ * e versamenti di lungo termine non ancora registrati (solo per i piani collegati a un conto).
+ */
+export function allocationProposal(month: Month, current: Month, planned: PlannedLike[], investments: InvestmentLike[]): ProposalItem[] {
+  return monthEntries(month, current, planned, investments)
+    .filter((e) => !e.paid && e.rata > 0 && (e.kind === "planned" || e.accountId != null))
+    // lungo termine già ripartito sul suo conto (anche per un mese futuro): non va riproposto
+    .filter((e) => e.kind === "planned" || !investments.find((i) => `i${i.id}` === e.key)?.linked.has(month))
+    .map((e) => {
+      const p = e.kind === "planned" ? planned.find((x) => `p${x.id}` === e.key)! : null;
+      const id = p ? p.id : Number(e.key.slice(1));
+      return { key: e.key, kind: e.kind, id, name: e.name, icon: e.icon, amount: e.rata, accountId: p ? p.accountId : e.accountId };
+    });
+}

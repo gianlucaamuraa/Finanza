@@ -33,13 +33,20 @@ export function PlannedDetail({ planned, current, accounts }: { planned: Planned
                 {m === current && <em>questo mese</em>}
               </span>
               <span className="num inst-amount">{eur(r.amount, 2)}</span>
-              {r.paid != null ? (
+              {r.fromAllocation ? (
+                <span className="tag"><Check size={11} style={{ verticalAlign: -1 }} /> {eur(r.paid ?? 0, 2)}</span>
+              ) : r.paid != null ? (
                 <span className="tag"><Check size={11} style={{ verticalAlign: -1 }} /> {eur(r.paid, 2)}</span>
               ) : (
                 <span className="tag future">Da versare</span>
               )}
             </button>
-            {open === m && (
+            {open === m && r.fromAllocation && (
+              <p className="note" style={{ padding: "0 2px 12px" }}>
+                Versata con la ripartizione dello stipendio di {monthLabel(m)}. Per cambiarla modifica la ripartizione in Movimenti.
+              </p>
+            )}
+            {open === m && !r.fromAllocation && (
               <PayForm planned={planned} month={m} amount={r.amount} paid={r.paid} accounts={accounts} accountId={r.accountId ?? planned.accountId} onDone={() => setOpen(null)} />
             )}
           </div>

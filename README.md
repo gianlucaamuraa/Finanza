@@ -18,6 +18,8 @@ App web personale e responsive per gestire le proprie finanze. Si usa dal telefo
   - andamento del PAC
 - **Movimenti**: mese per mese, con due schede.
   - *Stipendio*: entrata e ripartizione sui conti. Si può copiare la ripartizione dal mese precedente.
+    - ogni ripartizione si può collegare a una spesa prevedibile: la rata di quel mese risulta versata;
+    - *Proposta di ripartizione*: rate e versamenti PAC del mese non ancora coperti, con importi e conti già compilati; accettando si creano le ripartizioni.
   - *Uscite*: spese per conto e categoria, speso rispetto ad assegnato, filtro per conto.
 - **Spese prevedibili**: importo, mese di inizio e mese di fine. La rata mensile viene calcolata in automatico.
   - card *Versamenti mese per mese*: toccando un mese vedi su quali conti le rate sono state versate e su quali andranno versate (conto predefinito della spesa, o scelto quando segni la rata come versata).

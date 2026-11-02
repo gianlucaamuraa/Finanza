@@ -6,7 +6,7 @@ import { queryClient } from "./queryClient";
 import { periodRange } from "./lib/period";
 import { addMonths, daysInMonth, isDay, isMonth, monthIndex, type Month } from "./lib/dates";
 import { parseAmount } from "./lib/money";
-import { equalSplit, plannedAmount, type Installment } from "./lib/calc";
+import { equalSplit, plannedAmount, type Installment, type LinkedAllocations } from "./lib/calc";
 import { ACCOUNT_COLORS, ACCOUNT_ICONS, CATEGORY_ICONS, PLANNED_ICONS } from "./lib/icon-keys";
 
 // ---------------- Tipi ----------------
@@ -17,7 +17,7 @@ export type Account = {
 };
 export type Category = { id: number; name: string; icon: string; archived: boolean; sortOrder: number };
 export type Income = { id: number; period: Month; date: string; description: string; amount: number };
-export type Allocation = { id: number; period: Month; accountId: number; amount: number; note: string | null };
+export type Allocation = { id: number; period: Month; accountId: number; amount: number; note: string | null; plannedExpenseId: number | null };
 export type Expense = {
   id: number; date: string; accountId: number; categoryId: number | null; plannedExpenseId: number | null;
   amount: number; description: string;
@@ -28,6 +28,8 @@ export type Planned = {
   accountId: number | null;
   /** rate mese -> importo previsto e importo versato (null = non versata) */
   installments: Map<Month, Installment>;
+  /** ripartizioni dello stipendio collegate a questa spesa, per mese */
+  allocations: LinkedAllocations;
 };
 export type Investment = {
   id: number; name: string; monthlyAmount: number; annualIncrease: number; startMonth: Month; endMonth: Month | null; accountId: number | null;
@@ -46,7 +48,9 @@ const toAccount = (r: Row): Account => ({
 });
 const toCategory = (r: Row): Category => ({ id: n(r.id), name: s(r.name), icon: s(r.icon), archived: !!r.archived, sortOrder: n(r.sort_order) });
 const toIncome = (r: Row): Income => ({ id: n(r.id), period: s(r.period), date: s(r.date), description: s(r.description), amount: n(r.amount) });
-const toAllocation = (r: Row): Allocation => ({ id: n(r.id), period: s(r.period), accountId: n(r.account_id), amount: n(r.amount), note: ns(r.note) });
+const toAllocation = (r: Row): Allocation => ({
+  id: n(r.id), period: s(r.period), accountId: n(r.account_id), amount: n(r.amount), note: ns(r.note), plannedExpenseId: nn(r.planned_expense_id),
+});
 const toExpense = (r: Row): Expense => ({
   id: n(r.id), date: s(r.date), accountId: n(r.account_id), categoryId: nn(r.category_id), plannedExpenseId: nn(r.planned_expense_id),
   amount: n(r.amount), description: s(r.description),
@@ -123,19 +127,34 @@ export async function getBalances(): Promise<Map<number, number>> {
 }
 
 export async function getPlanned(): Promise<Planned[]> {
-  const [list, spent, inst] = await Promise.all([
+  const [list, spent, inst, alloc] = await Promise.all([
     q<Row[]>(sb().from("planned_expenses").select("*").order("end_month").order("id")),
     q<Row[]>(sb().from("planned_spent").select("planned_expense_id,spent")),
     q<Row[]>(sb().from("planned_installments").select("*").order("month")),
+    // se lo script del database non è ancora stato rieseguito la colonna manca: si ignora
+    q<Row[]>(sb().from("allocations").select("planned_expense_id,period,account_id,amount").not("planned_expense_id", "is", null)).catch(() => [] as Row[]),
   ]);
   const sp = new Map(spent.map((r) => [n(r.planned_expense_id), n(r.spent)]));
   return list.map((r) => ({
     id: n(r.id), name: s(r.name), icon: s(r.icon), totalAmount: n(r.total_amount), startMonth: s(r.start_month), endMonth: s(r.end_month),
     note: ns(r.note), spent: sp.get(n(r.id)) ?? 0, accountId: nn(r.account_id),
+    allocations: linkedAllocations(alloc.filter((a) => n(a.planned_expense_id) === n(r.id))),
     installments: new Map(
       inst.filter((x) => n(x.planned_expense_id) === n(r.id)).map((x) => [s(x.month), { amount: n(x.amount), paid: nn(x.paid_amount), accountId: nn(x.account_id) }]),
     ),
   }));
+}
+
+function linkedAllocations(rows: Row[]): LinkedAllocations {
+  const m: LinkedAllocations = new Map();
+  for (const a of rows) {
+    const k = s(a.period), prev = m.get(k);
+    // più ripartizioni nello stesso mese si sommano; il conto è quello della ripartizione più grande
+    m.set(k, prev
+      ? { amount: prev.amount + n(a.amount), accountId: n(a.amount) > prev.amount ? n(a.account_id) : prev.accountId }
+      : { amount: n(a.amount), accountId: n(a.account_id) });
+  }
+  return m;
 }
 
 export async function getInvestments(): Promise<Investment[]> {
@@ -232,8 +251,32 @@ export const saveAllocation = (fd: FormData) => run(() =>
   save("allocations", optId(fd, "id"), {
     period: month(fd, "period"), account_id: reqId(fd, "accountId", "Scegli un conto"),
     amount: amount(fd, "amount", { allowNegative: true }), note: str(fd, "note") || null,
+    // la colonna si scrive solo se serve, così chi non ha ancora aggiornato il database può continuare a ripartire
+    ...(optId(fd, "plannedExpenseId") != null || fd.get("hadPlanned") === "1" ? { planned_expense_id: optId(fd, "plannedExpenseId") } : {}),
   }));
 export const deleteAllocation = (id: number) => remove("allocations", id);
+
+/**
+ * Accetta la proposta di ripartizione: crea una ripartizione per ogni voce scelta.
+ * Le voci delle spese prevedibili vengono collegate alla spesa, così la rata risulta versata.
+ */
+export const acceptProposal = (period: Month, fd: FormData) => run(async () => {
+  if (!isMonth(period)) throw new InputError("Mese non valido");
+  const keys = fd.getAll("item").map(String);
+  if (!keys.length) throw new InputError("Scegli almeno una voce");
+  const rows = keys.map((k) => {
+    const id = Number(k.slice(1));
+    if (!/^[pi]\d+$/.test(k) || !Number.isInteger(id)) throw new InputError("Voce non valida");
+    const v = parseAmount(str(fd, `amt_${k}`));
+    if (v == null || v <= 0) throw new InputError("Importo non valido");
+    return {
+      period, account_id: reqId(fd, `acc_${k}`, "Scegli un conto per ogni voce"), amount: v,
+      note: str(fd, `name_${k}`).slice(0, 80) || null,
+      ...(k[0] === "p" ? { planned_expense_id: id } : {}),
+    };
+  });
+  await q(sb().from("allocations").insert(rows));
+});
 
 export const copyPreviousPeriod = (period: string) => run(async () => {
   if (!isMonth(period)) throw new InputError("Mese non valido");
@@ -253,7 +296,10 @@ export const copyPreviousPeriod = (period: string) => run(async () => {
       return { period, date: `${nm}-${String(dd).padStart(2, "0")}`, description: i.description, amount: i.amount };
     })));
   if (prevAlloc.length)
-    await q(sb().from("allocations").insert(prevAlloc.map((a) => ({ period, account_id: a.account_id, amount: a.amount, note: a.note }))));
+    await q(sb().from("allocations").insert(prevAlloc.map((a) => ({
+      period, account_id: a.account_id, amount: a.amount, note: a.note,
+      ...(a.planned_expense_id != null ? { planned_expense_id: a.planned_expense_id } : {}),
+    }))));
 });
 
 // Uscite

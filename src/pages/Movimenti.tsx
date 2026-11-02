@@ -1,15 +1,19 @@
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Briefcase, ChevronRight, CircleCheck, Plus } from "lucide-react";
-import type { Account, Category, PeriodData } from "@/api";
-import { combine, useAccounts, useBalances, useBase, useCategories, usePeriod, usePlanned, useSpent } from "@/hooks";
+import * as A from "@/api";
+import type { Account, Category, Investment, PeriodData, Planned } from "@/api";
+import { combine, useAccounts, useBalances, useBase, useCategories, useInvestments, usePeriod, usePlanned, useSpent } from "@/hooks";
 import { clampDay } from "@/lib/view";
-import { addDays, addMonths, dayLabel, dayLabelLong, diffDays, isMonth, type Month } from "@/lib/dates";
+import { addDays, addMonths, dayLabel, dayLabelLong, diffDays, isMonth, monthLabel, type Month } from "@/lib/dates";
 import { periodRange } from "@/lib/period";
 import { plannedInfo } from "@/lib/calc";
-import { eur, sum } from "@/lib/money";
+import { allocationProposal } from "@/lib/monthly";
+import { eur, parseAmount, sum, toInput } from "@/lib/money";
 import { IconBox } from "@/components/Icon";
 import { SheetTrigger } from "@/components/Sheet";
-import { AllocationForm, ExpenseForm, IncomeForm } from "@/components/forms";
+import { AllocationForm, ExpenseForm, IncomeForm, type PlannedLinkOpt } from "@/components/forms";
+import { ActionForm, Submit } from "@/components/form";
 import { LoadError, MonthNav, PageSkeleton, pctClass } from "@/components/ui";
 import { CopyPreviousButton } from "./CopyPreviousButton";
 import { Card } from "@/components/Card";
@@ -32,7 +36,8 @@ export default function Movimenti() {
   const qAccounts = useAccounts();
   const qCategories = useCategories();
   const qPlanned = usePlanned();
-  const st = combine(settings, qData, qAccounts, qCategories, qPlanned);
+  const qInv = useInvestments();
+  const st = combine(settings, qData, qAccounts, qCategories, qPlanned, qInv);
   if (st.error) return <LoadError error={st.error} onRetry={st.retry} />;
   if (st.loading || !period || !payday) return <PageSkeleton />;
   const data = qData.data!, accounts = qAccounts.data!, categories = qCategories.data!, planned = qPlanned.data!;
@@ -55,7 +60,7 @@ export default function Movimenti() {
           <Link to="/impostazioni" className="btn accent">Vai alle impostazioni</Link>
         </div>
       ) : tab === "stipendio" ? (
-        <Stipendio period={period} data={data} accounts={accounts} opts={opts} />
+        <Stipendio period={period} current={current ?? period} data={data} accounts={accounts} opts={opts} planned={planned} investments={qInv.data!} />
       ) : (
         <Uscite
           period={period}
@@ -77,7 +82,17 @@ export default function Movimenti() {
 type Acc = Account;
 type Opt = { id: number; name: string; icon: string; color: string };
 
-function Stipendio({ period, data, accounts, opts }: { period: Month; data: PeriodData; accounts: Acc[]; opts: Opt[] }) {
+function Stipendio({ period, current, data, accounts, opts, planned, investments }: {
+  period: Month; current: Month; data: PeriodData; accounts: Acc[]; opts: Opt[]; planned: Planned[]; investments: Investment[];
+}) {
+  const plannedById = new Map(planned.map((p) => [p.id, p]));
+  // spese collegabili: quelle con una rata in questo mese, più quelle già collegate
+  const linkedIds = new Set(data.allocations.map((a) => a.plannedExpenseId).filter((x) => x != null));
+  const planOpts: PlannedLinkOpt[] = planned
+    .map((p) => ({ p, rata: plannedInfo(p, current).rows.find(([m]) => m === period)?.[1].amount ?? null }))
+    .filter(({ p, rata }) => rata != null || linkedIds.has(p.id))
+    .map(({ p, rata }) => ({ id: p.id, name: p.name, rata, accountId: p.accountId }));
+  const proposal = allocationProposal(period, current, planned, investments);
   const qBalances = useBalances();
   const balances = qBalances.data ?? new Map<number, number>();
   const accById = new Map(accounts.map((a) => [a.id, a]));
@@ -112,7 +127,7 @@ function Stipendio({ period, data, accounts, opts }: { period: Month; data: Peri
 
         <div className="card-title" style={{ marginTop: 16 }}>
           Ripartizione
-          <SheetTrigger className="link" title="Aggiungi alla ripartizione" content={<AllocationForm period={period} accounts={opts} suggested={remaining} />}>
+          <SheetTrigger className="link" title="Aggiungi alla ripartizione" content={<AllocationForm period={period} accounts={opts} planned={planOpts} suggested={remaining} />}>
             <Plus size={14} /> Aggiungi
           </SheetTrigger>
         </div>
@@ -126,9 +141,12 @@ function Stipendio({ period, data, accounts, opts }: { period: Month; data: Peri
             {data.allocations.map((a) => {
               const acc = accById.get(a.accountId);
               return (
-                <SheetTrigger key={a.id} className="item" title="Modifica ripartizione" content={<AllocationForm period={period} accounts={opts} initial={a} />}>
+                <SheetTrigger key={a.id} className="item" title="Modifica ripartizione" content={<AllocationForm period={period} accounts={opts} planned={planOpts} initial={a} />}>
                   <IconBox name={acc?.icon} color={acc?.color} />
-                  <span className="main"><b>{acc?.name}</b><small>{a.note ?? "trasferimento"}</small></span>
+                  <span className="main">
+                    <b>{acc?.name}</b>
+                    <small>{a.plannedExpenseId != null ? `per ${plannedById.get(a.plannedExpenseId)?.name ?? "spesa eliminata"}` : a.note ?? "trasferimento"}</small>
+                  </span>
                   <span className="right num">{eur(a.amount, "auto")}<small>{income > 0 ? `${Math.round((a.amount / base) * 100)}%` : ""}</small></span>
                 </SheetTrigger>
               );
@@ -149,6 +167,8 @@ function Stipendio({ period, data, accounts, opts }: { period: Month; data: Peri
         )}
       </Card>
 
+      {proposal.length > 0 && <ProposalCard key={`${period}-${proposal.map((x) => x.key).join()}`} period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} />}
+
       <Card id="movimenti-2" title={<>
           Conti e contanti
           <Link to="/impostazioni" className="link">Gestisci <ChevronRight size={14} /></Link>
@@ -164,7 +184,7 @@ function Stipendio({ period, data, accounts, opts }: { period: Month; data: Peri
         </div>
       </Card>
 
-      <SheetTrigger className="fab" title="Aggiungi alla ripartizione" ariaLabel="Aggiungi alla ripartizione" content={<AllocationForm period={period} accounts={opts} suggested={remaining} />}>
+      <SheetTrigger className="fab" title="Aggiungi alla ripartizione" ariaLabel="Aggiungi alla ripartizione" content={<AllocationForm period={period} accounts={opts} planned={planOpts} suggested={remaining} />}>
         <Plus size={28} />
       </SheetTrigger>
     </>
@@ -325,5 +345,65 @@ function Uscite({
       </SheetTrigger>
       <p className="note" style={{ textAlign: "center" }}>Periodo: {dayLabel(data.range.start)} – {dayLabel(data.range.end)}</p>
     </>
+  );
+}
+
+/**
+ * Proposta di ripartizione: rate del mese e versamenti di lungo termine non ancora coperti,
+ * con importo e conto già compilati. Accettando si creano le ripartizioni (collegate alle spese).
+ */
+function ProposalCard({ period, items, accounts, remaining }: {
+  period: Month; items: ReturnType<typeof allocationProposal>; accounts: Opt[]; remaining: number | null;
+}) {
+  const [on, setOn] = useState(() => new Set(items.map((x) => x.key)));
+  const [amts, setAmts] = useState<Record<string, string>>(() => Object.fromEntries(items.map((x) => [x.key, toInput(x.amount)])));
+  const total = sum(items.filter((x) => on.has(x.key)).map((x) => parseAmount(amts[x.key]) ?? 0));
+  const toggle = (k: string) => setOn((prev) => {
+    const n = new Set(prev);
+    if (n.has(k)) n.delete(k);
+    else n.add(k);
+    return n;
+  });
+  return (
+    <Card id="movimenti-proposta" title={<>Proposta di ripartizione</>}>
+      <p className="note" style={{ marginTop: 0 }}>
+        Rate e versamenti di {monthLabel(period)} non ancora coperti. Controlla importi e conti, poi accetta: le rate risulteranno versate.
+      </p>
+      <ActionForm action={(fd) => A.acceptProposal(period, fd)} onSuccess={() => {}}>
+        <div className="list" style={{ marginBottom: 12 }}>
+          {items.map((x) => (
+            <div key={x.key} className="item" style={{ cursor: "default", flexWrap: "wrap", opacity: on.has(x.key) ? 1 : 0.5 }}>
+              <input type="checkbox" name="item" value={x.key} checked={on.has(x.key)} onChange={() => toggle(x.key)} aria-label={`Includi ${x.name}`} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
+              <IconBox name={x.icon} small />
+              <span className="main">
+                <b>{x.name}</b>
+                <small>{x.kind === "investment" ? "Lungo termine" : "Spesa prevedibile"}</small>
+              </span>
+              <input type="hidden" name={`name_${x.key}`} value={x.name} />
+              <div className="field-row" style={{ width: "100%", marginTop: 8 }}>
+                <select name={`acc_${x.key}`} className="input" defaultValue={x.accountId != null && accounts.some((a) => a.id === x.accountId) ? x.accountId : ""} aria-label={`Conto per ${x.name}`}>
+                  <option value="" disabled>Scegli il conto</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+                <input
+                  name={`amt_${x.key}`} className="input num" inputMode="decimal" autoComplete="off" style={{ maxWidth: 120 }}
+                  value={amts[x.key]} onChange={(e) => setAmts({ ...amts, [x.key]: e.target.value })} aria-label={`Importo per ${x.name}`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="calc">
+          <div>
+            <span>Totale proposto</span>
+            {remaining != null && <small>{remaining >= total ? `restano da ripartire ${eur(remaining - total, "auto")}` : `supera lo stipendio da ripartire di ${eur(total - remaining, "auto")}`}</small>}
+          </div>
+          <b className="num">{eur(total, 2)}</b>
+        </div>
+        <Submit className="btn accent" pendingText="Creazione…">Accetta e crea {on.size} {on.size === 1 ? "ripartizione" : "ripartizioni"}</Submit>
+      </ActionForm>
+    </Card>
   );
 }

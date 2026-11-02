@@ -112,6 +112,9 @@ alter table public.investments add column if not exists annual_increase integer 
 alter table public.planned_expenses add column if not exists account_id integer references public.accounts(id) on delete set null;
 alter table public.planned_installments add column if not exists account_id integer references public.accounts(id) on delete set null;
 
+-- ripartizione dello stipendio collegata a una spesa prevedibile (la rata del mese risulta versata)
+alter table public.allocations add column if not exists planned_expense_id integer references public.planned_expenses(id) on delete set null;
+
 -- conti da non contare nel patrimonio (es. soldi già destinati a una rata)
 alter table public.accounts add column if not exists exclude_from_net_worth boolean not null default false;
 

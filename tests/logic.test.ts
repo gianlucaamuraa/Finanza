@@ -159,3 +159,33 @@ describe("monthly overview", async () => {
     expect(m[m.length - 1].month).toBe("2027-10");
   });
 });
+
+describe("allocation proposal", async () => {
+  const { allocationProposal } = await import("../src/lib/monthly");
+  const base = {
+    id: 1, name: "Bollo", icon: "receipt", totalAmount: 6000, startMonth: "2026-10", endMonth: "2026-12", accountId: 2,
+    installments: new Map([
+      ["2026-10", { amount: 2000, paid: null }],
+      ["2026-11", { amount: 2000, paid: null }],
+      ["2026-12", { amount: 2000, paid: null }],
+    ]),
+  };
+  const pac = {
+    id: 7, name: "PAC", monthlyAmount: 20000, annualIncrease: 0, startMonth: "2026-01", endMonth: null, accountId: 5,
+    recorded: new Map<string, number>(), linked: new Map<string, number>(),
+  };
+
+  it("proposes unpaid installments and long-term contributions", () => {
+    const items = allocationProposal("2026-11", "2026-11", [base], [pac]);
+    expect(items.map((x) => [x.key, x.amount, x.accountId])).toEqual([["i7", 20000, 5], ["p1", 2000, 2]]);
+  });
+
+  it("a linked salary allocation counts as paid installment", () => {
+    const linked = { ...base, allocations: new Map([["2026-11", { amount: 2500, accountId: 3 }]]) };
+    const row = plannedInfo(linked, "2026-11").rows.find(([m]) => m === "2026-11")![1];
+    expect(row).toMatchObject({ paid: 2500, accountId: 3, fromAllocation: true });
+    const pacDone = { ...pac, linked: new Map([["2026-12", 20000]]) };
+    expect(allocationProposal("2026-11", "2026-11", [linked], [pac]).map((x) => x.key)).toEqual(["i7"]);
+    expect(allocationProposal("2026-12", "2026-11", [linked], [pacDone]).map((x) => x.key)).toEqual(["p1"]);
+  });
+});

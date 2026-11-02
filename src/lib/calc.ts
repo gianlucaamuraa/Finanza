@@ -3,7 +3,8 @@ import type { PeriodRange } from "./period";
 
 export type PlannedStatus = "future" | "active" | "done";
 
-export type Installment = { amount: number; paid: number | null };
+/** Rata: importo previsto, importo versato (null = non versata) e conto su cui è stata versata. */
+export type Installment = { amount: number; paid: number | null; accountId?: number | null };
 
 /** Divide un totale in rate uguali sui mesi indicati (l'ultima assorbe gli arrotondamenti). */
 export function equalSplit(total: number, months: Month[]): Map<Month, number> {

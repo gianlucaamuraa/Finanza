@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Plus } from "lucide-react";
-import { combine, useBase, usePlanned } from "@/hooks";
+import { combine, useAccounts, useBase, usePlanned } from "@/hooks";
 import { plannedByMonth, plannedInfo, type PlannedStatus } from "@/lib/calc";
 import { monthLabel, type Month } from "@/lib/dates";
 import { eur, sum } from "@/lib/money";
+import type { Account, Planned } from "@/api";
 import { IconBox } from "@/components/Icon";
 import { SheetTrigger } from "@/components/Sheet";
-import { PlannedForm } from "@/components/forms";
+import { PlannedForm, type AccountOpt } from "@/components/forms";
 import { PlannedDetail } from "@/components/PlannedDetail";
 import { LoadError, PageSkeleton } from "@/components/ui";
 
@@ -19,10 +20,13 @@ export default function SpesePrevedibili() {
   const [showPast, setShowPast] = useState(false);
   const { settings, current } = useBase();
   const qPlanned = usePlanned();
-  const st = combine(settings, qPlanned);
+  const qAcc = useAccounts();
+  const st = combine(settings, qPlanned, qAcc);
   if (st.error) return <LoadError error={st.error} onRetry={st.retry} />;
   if (st.loading || !current) return <PageSkeleton />;
   const planned = qPlanned.data!;
+  const allAccounts = qAcc.data!;
+  const accounts = allAccounts.filter((a) => !a.archived);
   const f = sp.get("filtro");
   const filter = FILTERS.some(([k]) => k === f) ? f! : "tutte";
 
@@ -46,7 +50,7 @@ export default function SpesePrevedibili() {
         </div>
       </div>
 
-      {months.length > 0 && <MonthlyCard months={months} current={current} showPast={showPast} onTogglePast={() => setShowPast(!showPast)} />}
+      {months.length > 0 && <MonthlyCard months={months} current={current} planned={planned} accounts={allAccounts} showPast={showPast} onTogglePast={() => setShowPast(!showPast)} />}
 
       <div className="chips">
         {FILTERS.map(([k, l]) => (
@@ -60,7 +64,7 @@ export default function SpesePrevedibili() {
         </div>
       ) : (
         shown.map(({ p, i }) => (
-          <SheetTrigger key={p.id} className="card" title={p.name} content={<PlannedDetail planned={p} current={current} />}>
+          <SheetTrigger key={p.id} className="card" title={p.name} content={<PlannedDetail planned={p} current={current} accounts={accounts} />}>
             <span style={{ display: "flex", gap: 12, alignItems: "center", textAlign: "left", width: "100%" }}>
               <IconBox name={p.icon} />
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -87,7 +91,7 @@ export default function SpesePrevedibili() {
         ))
       )}
 
-      <SheetTrigger className="fab" title="Nuova spesa prevedibile" ariaLabel="Nuova spesa prevedibile" content={<PlannedForm defaultStart={current} />}>
+      <SheetTrigger className="fab" title="Nuova spesa prevedibile" ariaLabel="Nuova spesa prevedibile" content={<PlannedForm defaultStart={current} accounts={accounts} />}>
         <Plus size={28} />
       </SheetTrigger>
     </>
@@ -95,9 +99,11 @@ export default function SpesePrevedibili() {
 }
 
 /** Quanto versare (e quanto è già stato versato) ogni mese per tutte le spese prevedibili insieme. */
-function MonthlyCard({ months, current, showPast, onTogglePast }: {
+function MonthlyCard({ months, current, planned, accounts, showPast, onTogglePast }: {
   months: ReturnType<typeof plannedByMonth>;
   current: Month;
+  planned: Planned[];
+  accounts: Account[];
   showPast: boolean;
   onTogglePast: () => void;
 }) {
@@ -121,7 +127,11 @@ function MonthlyCard({ months, current, showPast, onTogglePast }: {
             const done = m.paidCount === m.count;
             return (
               <div key={m.month} className={`inst${done ? " paid" : ""}${m.month === current ? " now" : ""}`}>
-                <div className="inst-row" style={{ cursor: "default" }}>
+                <SheetTrigger
+                  className="inst-row"
+                  title={`Versamenti di ${monthLabel(m.month)}`}
+                  content={<MonthDetail month={m.month} current={current} planned={planned} accounts={accounts} />}
+                >
                   <span className="inst-month">
                     {monthLabel(m.month, false)}
                     <em style={{ color: "var(--muted)", fontWeight: 500 }}>
@@ -136,12 +146,105 @@ function MonthlyCard({ months, current, showPast, onTogglePast }: {
                   ) : (
                     <span className="tag future">Da versare</span>
                   )}
-                </div>
+                </SheetTrigger>
               </div>
             );
           })}
         </div>
       )}
     </div>
+  );
+}
+
+/** Dettaglio di un mese: in quali spese prevedibili vanno i soldi, quanto, e su quali conti. */
+function MonthDetail({ month, current, planned, accounts }: { month: Month; current: Month; planned: Planned[]; accounts: AccountOpt[] }) {
+  const byId = new Map(accounts.map((a) => [a.id, a]));
+  const entries = planned
+    .flatMap((p) => {
+      const r = plannedInfo(p, current).rows.find(([m]) => m === month)?.[1];
+      if (!r) return [];
+      const paid = r.paid != null;
+      // versata: conto scelto quando è stata segnata; da versare: conto predefinito della spesa
+      const accountId = paid ? r.accountId ?? null : r.accountId ?? p.accountId;
+      return [{ p, rata: r.amount, paid, paidAmount: r.paid ?? 0, amount: paid ? r.paid! : r.amount, accountId }];
+    })
+    .sort((a, b) => b.rata - a.rata);
+
+  const total = sum(entries.map((e) => e.rata));
+  const versato = sum(entries.map((e) => e.paidAmount));
+  const accName = (id: number | null) => (id != null ? byId.get(id)?.name ?? "conto eliminato" : null);
+
+  // totali per conto
+  const groups = new Map<number | null, { paid: number; todo: number }>();
+  for (const e of entries) {
+    const g = groups.get(e.accountId) ?? { paid: 0, todo: 0 };
+    if (e.paid) g.paid += e.amount;
+    else g.todo += e.amount;
+    groups.set(e.accountId, g);
+  }
+  const accRows = [...groups].sort((a, b) => b[1].paid + b[1].todo - (a[1].paid + a[1].todo));
+  const missing = entries.some((e) => e.accountId == null);
+  const todoLabel = month < current ? "non versato" : "da versare";
+
+  return (
+    <>
+      <div className="calc" style={{ marginTop: 0 }}>
+        <div>
+          <span>Totale del mese</span>
+          <small>{entries.length} {entries.length === 1 ? "spesa" : "spese"} · versato {eur(versato, 2)}</small>
+        </div>
+        <b className="num">{eur(total, 2)}</b>
+      </div>
+
+      <div className="card-title">Dove vanno i soldi</div>
+      <div className="list" style={{ marginBottom: 18 }}>
+        {entries.map((e) => {
+          const acc = accName(e.accountId);
+          return (
+            <div className="item" key={e.p.id} style={{ cursor: "default" }}>
+              <IconBox name={e.p.icon} small />
+              <div className="main">
+                <b>{e.p.name}</b>
+                <small>
+                  {total ? Math.round((e.rata / total) * 100) : 0}% del mese{acc ? ` · ${e.paid ? "su" : "andrà su"} ${acc}` : ""}
+                </small>
+              </div>
+              <div className="right num">
+                {eur(e.paid ? e.paidAmount : e.rata, 2)}
+                <small>{e.paid ? (e.paidAmount !== e.rata ? `versati (rata ${eur(e.rata, "auto")})` : "versata") : todoLabel}</small>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {accRows.length > 0 && !(accRows.length === 1 && accRows[0][0] == null) && (
+        <>
+          <div className="card-title">Per conto</div>
+          <div className="list">
+            {accRows.map(([id, g]) => {
+              const a = id != null ? byId.get(id) : undefined;
+              return (
+                <div className="item" key={id ?? "none"} style={{ cursor: "default" }}>
+                  <IconBox name={a?.icon ?? "wallet"} color={a?.color} small />
+                  <div className="main">
+                    <b>{id == null ? "Conto non indicato" : accName(id)}</b>
+                    <small>
+                      {[g.paid ? `versato ${eur(g.paid, "auto")}` : "", g.todo ? `${todoLabel} ${eur(g.todo, "auto")}` : ""].filter(Boolean).join(" · ")}
+                    </small>
+                  </div>
+                  <div className="right num">{eur(g.paid + g.todo, 2)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {missing && (
+        <p className="note" style={{ marginTop: 12 }}>
+          Per indicare il conto: apri la spesa e scegli il conto dei versamenti, oppure sceglilo quando segni la rata come versata.
+        </p>
+      )}
+    </>
   );
 }

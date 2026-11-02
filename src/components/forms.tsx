@@ -171,9 +171,24 @@ export function ExpenseForm({
 
 // ---------- Spesa prevedibile ----------
 
-type PlannedInit = { id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null; installments: Map<Month, Installment> };
+type PlannedInit = { id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null; accountId: number | null; installments: Map<Month, Installment> };
 
-export function PlannedForm({ defaultStart, initial }: { defaultStart: Month; initial?: PlannedInit }) {
+/** Selettore del conto su cui si versano le rate (facoltativo). */
+export function AccountSelect({ accounts, defaultValue, label = "Conto dei versamenti (opzionale)", id = "accountId" }: { accounts: AccountOpt[]; defaultValue?: number | null; label?: string; id?: string }) {
+  if (accounts.length === 0) return null;
+  return (
+    <Field label={label} htmlFor={id}>
+      <select id={id} name="accountId" className="input" defaultValue={defaultValue ?? ""}>
+        <option value="">Non indicato</option>
+        {accounts.map((a) => (
+          <option key={a.id} value={a.id}>{a.name}</option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
+export function PlannedForm({ defaultStart, initial, accounts }: { defaultStart: Month; initial?: PlannedInit; accounts: AccountOpt[] }) {
   return (
     <ActionForm action={A.savePlanned}>
       <Hidden name="id" value={initial?.id} />
@@ -181,6 +196,7 @@ export function PlannedForm({ defaultStart, initial }: { defaultStart: Month; in
         <input id="name" name="name" className="input" defaultValue={initial?.name} placeholder="es. Assicurazione auto" required maxLength={80} />
       </Field>
       <PlannedAmounts initial={initial} defaultStart={defaultStart} />
+      <AccountSelect accounts={accounts} defaultValue={initial?.accountId} />
       <div className="field">
         <span className="label">Icona</span>
         <IconPicker name="icon" icons={PLANNED_ICONS} defaultValue={initial?.icon} />

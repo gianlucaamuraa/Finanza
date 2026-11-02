@@ -24,6 +24,8 @@ export type Expense = {
 };
 export type Planned = {
   id: number; name: string; icon: string; totalAmount: number; startMonth: Month; endMonth: Month; note: string | null; spent: number;
+  /** conto su cui si versano le rate (predefinito) */
+  accountId: number | null;
   /** rate mese -> importo previsto e importo versato (null = non versata) */
   installments: Map<Month, Installment>;
 };
@@ -56,6 +58,7 @@ export function friendlyError(e: unknown): string {
   const msg = err?.message ?? String(e);
   if (/failed to fetch|networkerror|load failed/i.test(msg)) return "Connessione assente: controlla internet e riprova.";
   if (err?.code === "42501" || /row-level security/i.test(msg)) return "Permesso negato dal database: esegui lo script supabase/setup.sql.";
+  if (err?.code === "PGRST204" || err?.code === "42703") return "Colonna mancante nel database: riesegui lo script supabase/setup.sql in Supabase.";
   if (err?.code === "PGRST205" || err?.code === "42P01") return "Tabella non trovata: esegui lo script supabase/setup.sql in Supabase.";
   if (/jwt|token/i.test(msg)) return "Sessione scaduta: esci e rientra.";
   return msg;
@@ -123,14 +126,14 @@ export async function getPlanned(): Promise<Planned[]> {
   const [list, spent, inst] = await Promise.all([
     q<Row[]>(sb().from("planned_expenses").select("*").order("end_month").order("id")),
     q<Row[]>(sb().from("planned_spent").select("planned_expense_id,spent")),
-    q<Row[]>(sb().from("planned_installments").select("planned_expense_id,month,amount,paid_amount").order("month")),
+    q<Row[]>(sb().from("planned_installments").select("*").order("month")),
   ]);
   const sp = new Map(spent.map((r) => [n(r.planned_expense_id), n(r.spent)]));
   return list.map((r) => ({
     id: n(r.id), name: s(r.name), icon: s(r.icon), totalAmount: n(r.total_amount), startMonth: s(r.start_month), endMonth: s(r.end_month),
-    note: ns(r.note), spent: sp.get(n(r.id)) ?? 0,
+    note: ns(r.note), spent: sp.get(n(r.id)) ?? 0, accountId: nn(r.account_id),
     installments: new Map(
-      inst.filter((x) => n(x.planned_expense_id) === n(r.id)).map((x) => [s(x.month), { amount: n(x.amount), paid: nn(x.paid_amount) }]),
+      inst.filter((x) => n(x.planned_expense_id) === n(r.id)).map((x) => [s(x.month), { amount: n(x.amount), paid: nn(x.paid_amount), accountId: nn(x.account_id) }]),
     ),
   }));
 }
@@ -299,7 +302,7 @@ export const savePlanned = (fd: FormData) => run(async () => {
   const v = {
     name: name(fd), icon: oneOf(str(fd, "icon"), PLANNED_ICONS, "calendar-clock"),
     total_amount: [...amounts.values()].reduce((a, x) => a + x, 0),
-    start_month: start, end_month: end, note: str(fd, "note") || null,
+    start_month: start, end_month: end, note: str(fd, "note") || null, account_id: optId(fd, "accountId"),
   };
   let id = optId(fd, "id");
   if (id) await q(sb().from("planned_expenses").update(v).eq("id", id));
@@ -310,11 +313,12 @@ export const savePlanned = (fd: FormData) => run(async () => {
 /** Segna una rata come versata (con l'importo versato) o, con paid = null, come non versata. */
 export const payInstallment = (p: Planned, m: Month, fd: FormData | null) => run(async () => {
   const paid = fd ? amount(fd, "paid") : null;
+  const accountId = fd ? optId(fd, "accountId") : null;
   if (p.installments.size === 0) {
     // spesa senza rate salvate: prima si creano le rate uguali
     await writeInstallments(p.id, equalSplit(p.totalAmount, monthsFrom(p.startMonth, p.endMonth)));
   }
-  await q(sb().from("planned_installments").update({ paid_amount: paid }).eq("planned_expense_id", p.id).eq("month", m));
+  await q(sb().from("planned_installments").update({ paid_amount: paid, account_id: accountId }).eq("planned_expense_id", p.id).eq("month", m));
 });
 
 export const deletePlanned = (id: number) => remove("planned_expenses", id);

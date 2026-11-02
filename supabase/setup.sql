@@ -172,6 +172,54 @@ select account_id, period, sum(amount)::int as total
 from public.allocations
 group by account_id, period;
 
+-- 5. Storico delle modifiche (per il pulsante "Annulla") ------------------
+-- Ogni inserimento, modifica o cancellazione salva una copia del dato prima e dopo.
+
+create table if not exists public.history (
+  id bigserial primary key,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  table_name text not null,
+  row_id integer,
+  action text not null,
+  old_data jsonb,
+  new_data jsonb,
+  created_at timestamptz not null default now(),
+  undone boolean not null default false
+);
+create index if not exists history_user_created_idx on public.history (user_id, created_at desc);
+alter table public.history enable row level security;
+drop policy if exists "solo i miei dati" on public.history;
+create policy "solo i miei dati" on public.history for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+create or replace function public.log_history() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  r jsonb := case when tg_op = 'DELETE' then to_jsonb(old) else to_jsonb(new) end;
+begin
+  -- un salvataggio che non cambia niente non va nello storico
+  if tg_op = 'UPDATE' and to_jsonb(old) = to_jsonb(new) then return null; end if;
+  insert into public.history (user_id, table_name, row_id, action, old_data, new_data)
+  values (
+    coalesce((r->>'user_id')::uuid, auth.uid()), tg_table_name, (r->>'id')::int, lower(tg_op),
+    case when tg_op in ('UPDATE', 'DELETE') then to_jsonb(old) end,
+    case when tg_op in ('INSERT', 'UPDATE') then to_jsonb(new) end
+  );
+  return null;
+end $$;
+
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'accounts', 'categories', 'incomes', 'allocations', 'planned_expenses', 'expenses',
+    'investments', 'investment_contributions', 'planned_installments'
+  ] loop
+    execute format('drop trigger if exists history_log on public.%I', t);
+    execute format('create trigger history_log after insert or update or delete on public.%I for each row execute function public.log_history()', t);
+  end loop;
+end $$;
+
 -- Permessi: solo gli utenti autenticati, mai gli anonimi -------------------
 
 revoke all on all tables in schema public from anon;

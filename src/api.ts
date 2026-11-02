@@ -496,3 +496,53 @@ export async function signOut() {
   await sb().auth.signOut();
   queryClient.clear();
 }
+
+// ---------------- Storico delle modifiche ----------------
+
+export type HistoryEntry = {
+  id: number; table: string; rowId: number | null; action: "insert" | "update" | "delete";
+  oldData: Row | null; newData: Row | null; createdAt: string; undone: boolean;
+};
+
+/** Ultime modifiche (null se lo script del database non ha ancora creato lo storico). */
+export async function getHistory(): Promise<HistoryEntry[] | null> {
+  try {
+    const rows = await q<Row[]>(sb().from("history").select("*").order("created_at", { ascending: false }).order("id", { ascending: false }).limit(400));
+    return rows.map((r) => ({
+      id: n(r.id), table: s(r.table_name), rowId: nn(r.row_id), action: s(r.action) as HistoryEntry["action"],
+      oldData: (r.old_data as Row) ?? null, newData: (r.new_data as Row) ?? null, createdAt: s(r.created_at), undone: !!r.undone,
+    }));
+  } catch (e) {
+    const code = (e as { code?: string })?.code;
+    if (code === "PGRST205" || code === "42P01") return null;
+    throw e;
+  }
+}
+
+// ordine delle tabelle: prima i "genitori" (conti, spese, piani), poi i dati che li usano
+const TABLE_RANK: Record<string, number> = {
+  accounts: 0, categories: 0, planned_expenses: 1, investments: 1,
+  incomes: 2, allocations: 2, expenses: 2, planned_installments: 2, investment_contributions: 2,
+};
+const UNDO_TABLES = new Set(Object.keys(TABLE_RANK));
+
+/** Annulla un gruppo di modifiche, rimettendo i dati com'erano prima. */
+export const undoHistory = (entries: HistoryEntry[]) => run(async () => {
+  const list = entries.filter((x) => !x.undone && UNDO_TABLES.has(x.table) && x.rowId != null);
+  if (!list.length) throw new InputError("Niente da annullare");
+  const rank = (x: HistoryEntry) => TABLE_RANK[x.table] ?? 9;
+  // 1. ciò che era stato aggiunto si cancella (prima i dati, poi i genitori)
+  for (const x of list.filter((x) => x.action === "insert").sort((a, b) => rank(b) - rank(a) || b.id - a.id))
+    await q(sb().from(x.table).delete().eq("id", x.rowId!));
+  // 2. ciò che era stato cancellato si reinserisce (prima i genitori)
+  for (const x of list.filter((x) => x.action === "delete").sort((a, b) => rank(a) - rank(b) || a.id - b.id)) {
+    const exists = await q<Row[]>(sb().from(x.table).select("id").eq("id", x.rowId!));
+    if (!exists.length) await q(sb().from(x.table).insert(x.oldData!));
+  }
+  // 3. ciò che era stato modificato torna ai valori di prima (dalla modifica più recente alla più vecchia)
+  for (const x of list.filter((x) => x.action === "update").sort((a, b) => b.id - a.id)) {
+    const { id: _id, user_id: _u, ...values } = x.oldData!;
+    await q(sb().from(x.table).update(values).eq("id", x.rowId!));
+  }
+  await q(sb().from("history").update({ undone: true }).in("id", entries.map((x) => x.id)));
+});

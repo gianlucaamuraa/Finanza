@@ -304,3 +304,6 @@ button.card, a.card { display: block; width: 100%; text-align: left; font: inher
 .mini-stats small { display: block; font-size: 11px; color: var(--muted); }
 .mini-stats .pos { color: var(--pos); }
 .mini-stats .neg { color: var(--neg); }
+
+/* pulsante piccolo (es. Annulla nello storico) */
+.btn.sm { width: auto; padding: 8px 12px; font-size: 13px; border-radius: 10px; margin: 0; }

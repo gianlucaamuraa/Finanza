@@ -8,6 +8,7 @@ import { AccountForm, CategoryForm, PaydayForm } from "@/components/forms";
 import { LogoutButton } from "@/components/Nav";
 import { LoadError, PageSkeleton } from "@/components/ui";
 import { Card } from "@/components/Card";
+import { HistoryCard } from "@/components/HistoryCard";
 
 export default function Impostazioni() {
   const { settings, payday } = useBase();
@@ -88,6 +89,8 @@ export default function Impostazioni() {
           ))}
         </div>
       </Card>
+
+      <HistoryCard />
 
       <LogoutButton className="btn ghost" />
     </div>

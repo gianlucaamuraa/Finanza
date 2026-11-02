@@ -189,3 +189,19 @@ describe("allocation proposal", async () => {
     expect(allocationProposal("2026-12", "2026-11", [linked], [pacDone]).map((x) => x.key)).toEqual(["p1"]);
   });
 });
+
+describe("history", async () => {
+  const { describe: describeChange, groupHistory } = await import("../src/lib/history");
+  const e = (id: number, at: string, extra: object = {}) => ({
+    id, table: "allocations", action: "update" as const, createdAt: at, undone: false,
+    oldData: { amount: 5000, period: "2026-10", account_id: 1 }, newData: { amount: 8000, period: "2026-11", account_id: 1 }, ...extra,
+  });
+  it("describes a change in Italian", () => {
+    expect(describeChange(e(1, "2026-11-02T10:00:00Z"), { accounts: new Map([[1, "Fondo spese"]]) }))
+      .toBe("Ripartizione modificata · Fondo spese · Novembre 2026 · € 50 → € 80, Ottobre 2026 → Novembre 2026");
+  });
+  it("groups changes made together", () => {
+    const g = groupHistory([e(1, "2026-11-02T10:00:00Z"), e(2, "2026-11-02T10:00:02Z"), e(3, "2026-11-02T10:05:00Z")]);
+    expect(g.map((x) => x.map((y) => y.id))).toEqual([[3], [2, 1]]);
+  });
+});

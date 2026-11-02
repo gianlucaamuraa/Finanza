@@ -27,6 +27,7 @@ App web personale e responsive per gestire le proprie finanze. Si usa dal telefo
   - card *Versamenti mese per mese*: toccando un mese vedi su quali conti le rate sono state versate e su quali andranno versate (conto predefinito della spesa, o scelto quando segni la rata come versata).
 - **Lungo termine (PAC)**: versamenti mese per mese e anno per anno, mesi futuri pianificati, collegamento opzionale a un conto.
 - **Impostazioni**: conti e contanti, categorie, giorno dello stipendio, conti che contano per la quota.
+  - *Storico modifiche*: ogni aggiunta, modifica o cancellazione viene salvata; "Annulla" rimette i dati com'erano.
 
 Il mese va da uno stipendio al successivo. Se lo stipendio arriva dal giorno 15 in poi, apre il mese successivo: lo stipendio del 27 ottobre apre "Novembre".
 

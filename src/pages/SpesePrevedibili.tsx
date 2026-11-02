@@ -4,7 +4,8 @@ import { ChevronRight, Plus } from "lucide-react";
 import { combine, useAccounts, useBase, useInvestments, usePlanned } from "@/hooks";
 import { plannedInfo, type PlannedStatus } from "@/lib/calc";
 import { monthEntries, monthsOverview } from "@/lib/monthly";
-import { monthLabel, type Month } from "@/lib/dates";
+import { addMonths, dayLabelLong, monthLabel, type Month } from "@/lib/dates";
+import { periodRange } from "@/lib/period";
 import { eur, sum } from "@/lib/money";
 import type { Account, Investment, Planned } from "@/api";
 import { IconBox } from "@/components/Icon";
@@ -19,7 +20,7 @@ const TAG: Record<PlannedStatus, [string, string]> = { active: ["", "In corso"],
 export default function SpesePrevedibili() {
   const [sp] = useSearchParams();
   const [showPast, setShowPast] = useState(false);
-  const { settings, current } = useBase();
+  const { settings, current, payday } = useBase();
   const qPlanned = usePlanned();
   const qAcc = useAccounts();
   const qInv = useInvestments();
@@ -43,6 +44,10 @@ export default function SpesePrevedibili() {
   // quadro generale: spese prevedibili + versamenti di lungo termine
   const months = monthsOverview(current, planned, investments);
   const now = months.find((m) => m.month === current);
+  // prossimo stipendio: apre il mese successivo, quanto andrà accantonato allora
+  const nextMonth = addMonths(current, 1);
+  const next = months.find((m) => m.month === nextMonth);
+  const nextPayday = payday ? periodRange(current, payday).nextPayday : null;
 
   return (
     <>
@@ -55,6 +60,27 @@ export default function SpesePrevedibili() {
           <div className="pill"><span>Versato</span><b className="num">{eur(now?.paid ?? 0, "auto")}</b></div>
         </div>
       </div>
+
+      {nextPayday && (
+        <SheetTrigger
+          className="card"
+          title={`Versamenti di ${monthLabel(nextMonth)}`}
+          content={<MonthDetail month={nextMonth} current={current} planned={planned} investments={investments} accounts={allAccounts} />}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left" }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span className="card-title" style={{ marginBottom: 4 }}>Al prossimo stipendio · {dayLabelLong(nextPayday)}</span>
+              <small className="muted" style={{ display: "block", fontSize: 13 }}>Da accantonare per {monthLabel(nextMonth)}</small>
+              <small className="muted" style={{ display: "block", fontSize: 12, marginTop: 4, whiteSpace: "nowrap" }}>Prevedibili {eur(next?.planned ?? 0, "auto")}</small>
+              {!!next?.investment && (
+                <small className="muted" style={{ display: "block", fontSize: 12, whiteSpace: "nowrap" }}>Lungo termine {eur(next.investment, "auto")}</small>
+              )}
+            </span>
+            <b className="num" style={{ fontSize: 22 }}>{eur(next?.amount ?? 0, 2)}</b>
+            <ChevronRight size={16} className="muted" aria-hidden />
+          </span>
+        </SheetTrigger>
+      )}
 
       {months.length > 0 && <MonthlyCard months={months} current={current} planned={planned} investments={investments} accounts={allAccounts} showPast={showPast} onTogglePast={() => setShowPast(!showPast)} />}
 

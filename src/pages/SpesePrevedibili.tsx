@@ -220,36 +220,46 @@ function MonthDetail({ month, current, planned, investments, accounts }: {
       <div className="calc" style={{ marginTop: 0 }}>
         <div>
           <span>Totale del mese</span>
-          <small>{entries.length} {entries.length === 1 ? "voce" : "voci"} · versato {eur(versato, 2)}</small>
+          <small>versato {eur(versato, 2)}</small>
         </div>
         <b className="num">{eur(total, 2)}</b>
       </div>
 
-      <div className="card-title">Dove vanno i soldi</div>
-      <div className="list" style={{ marginBottom: 18 }}>
-        {entries.map((e) => {
-          const acc = accName(e.accountId);
-          return (
-            <div className="item" key={e.key} style={{ cursor: "default" }}>
-              <IconBox name={e.icon} small />
-              <div className="main">
-                <b>{e.name}</b>
-                <small>
-                  {[
-                    e.kind === "investment" ? "Lungo termine" : null,
-                    `${total ? Math.round((e.rata / total) * 100) : 0}%`,
-                    acc ? `${e.paid ? "su" : "andrà su"} ${acc}` : null,
-                  ].filter(Boolean).join(" · ")}
-                </small>
-              </div>
-              <div className="right num">
-                {eur(e.paid ? e.paidAmount : e.rata, 2)}
-                <small>{e.paid ? (e.paidAmount !== e.rata ? `versati (rata ${eur(e.rata, "auto")})` : "versata") : todoLabel}</small>
-              </div>
+      {(["planned", "investment"] as const).map((kind) => {
+        const list = entries.filter((e) => e.kind === kind);
+        if (list.length === 0) return null;
+        return (
+          <div key={kind}>
+            <div className="card-title">
+              {kind === "planned" ? "Spese prevedibili" : "Lungo termine"}
+              <span className="num" style={{ color: "var(--text)" }}>{eur(sum(list.map((e) => e.rata)), 2)}</span>
             </div>
-          );
-        })}
-      </div>
+            <div className="list" style={{ marginBottom: 18 }}>
+              {list.map((e) => {
+                const acc = accName(e.accountId);
+                return (
+                  <div className="item" key={e.key} style={{ cursor: "default" }}>
+                    <IconBox name={e.icon} small />
+                    <div className="main">
+                      <b>{e.name}</b>
+                      <small>
+                        {[
+                          `${total ? Math.round((e.rata / total) * 100) : 0}% del mese`,
+                          acc ? `${e.paid ? "su" : "andrà su"} ${acc}` : null,
+                        ].filter(Boolean).join(" · ")}
+                      </small>
+                    </div>
+                    <div className="right num">
+                      {eur(e.paid ? e.paidAmount : e.rata, 2)}
+                      <small>{e.paid ? (e.paidAmount !== e.rata ? `versati (rata ${eur(e.rata, "auto")})` : "versata") : todoLabel}</small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
 
       {accRows.length > 0 && !(accRows.length === 1 && accRows[0][0] == null) && (
         <>

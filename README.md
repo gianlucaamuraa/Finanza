@@ -49,6 +49,8 @@ Il mese va da uno stipendio al successivo. Se lo stipendio arriva dal giorno 15 
    - crea le viste per i saldi.
 
    Si può rieseguire senza danni.
+
+   Se il database esiste già, per le novità basta eseguire [`supabase/aggiornamento.sql`](supabase/aggiornamento.sql) (anche questo si può rieseguire).
 4. Copia i due dati per l'app da **Project Settings → API Keys** (o **Data API**):
    - **Project URL**, del tipo `https://xxxx.supabase.co`;
    - **Publishable key** (`sb_publishable_…`), oppure la chiave *anon* nelle chiavi "Legacy".

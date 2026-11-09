@@ -79,6 +79,9 @@ export function monthsOverview(current: Month, planned: PlannedLike[], investmen
         amount: sumOf(e, (x) => x.rata),
         planned: sumOf(e.filter((x) => x.kind === "planned"), (x) => x.rata),
         investment: sumOf(e.filter((x) => x.kind === "investment"), (x) => x.rata),
+        // spese prevedibili "normali" e quelle mostrate a parte (es. un prestito), ognuna con il suo importo
+        plannedMain: sumOf(e.filter((x) => x.kind === "planned" && x.saving), (x) => x.rata),
+        separate: e.filter((x) => x.kind === "planned" && !x.saving).map((x) => ({ name: x.name, amount: x.rata })),
         paid: sumOf(e, (x) => x.paidAmount),
         // solo i soldi messi da parte (escluse per es. le rate di un prestito)
         savingAmount: sumOf(e.filter((x) => x.saving), (x) => x.rata),
@@ -115,4 +118,11 @@ export function allocationProposal(month: Month, current: Month, planned: Planne
       const id = p ? p.id : Number(e.key.slice(1));
       return { key: e.key, kind: e.kind, id, name: e.name, icon: e.icon, amount: e.rata, accountId: p ? p.accountId : e.accountId };
     });
+}
+
+/** Righe del dettaglio di un mese: spese prevedibili, poi ogni spesa mostrata a parte, poi lungo termine (solo importi > 0). */
+export function breakdown(m: { plannedMain: number; separate: { name: string; amount: number }[]; investment: number } | undefined): [string, number][] {
+  if (!m) return [];
+  return ([["Spese prevedibili", m.plannedMain], ...m.separate.map((x) => [x.name, x.amount] as [string, number]), ["Lungo termine", m.investment]] as [string, number][])
+    .filter(([, v]) => v > 0);
 }

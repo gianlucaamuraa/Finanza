@@ -264,12 +264,14 @@ export function PlannedForm({ defaultStart, initial, accounts }: { defaultStart:
       <AccountSelect accounts={accounts} defaultValue={initial?.accountId} />
       <div className="field">
         <label className="toggle">
-          Conta come accantonamento
-          <input type="checkbox" name="isSaving" defaultChecked={initial?.isSaving ?? true} />
+          Mostra a parte
+          <input type="checkbox" name="separate" defaultChecked={initial ? !initial.isSaving : false} />
         </label>
-        <p className="note" style={{ margin: "4px 0 0" }}>Togli la spunta per le rate di un prestito o altri pagamenti: restano nella ripartizione, ma non in "Accantonato".</p>
+        <p className="note" style={{ margin: "4px 0 0" }}>
+          Per le rate di un prestito o altri pagamenti: restano nel totale del mese, ma sotto ogni mese compaiono su una riga a parte e non contano in "Accantonato".
+        </p>
       </div>
-      <Hidden name="wasNotSaving" value={initial && !initial.isSaving ? "1" : undefined} />
+      <Hidden name="wasSeparate" value={initial && !initial.isSaving ? "1" : undefined} />
       <div className="field">
         <span className="label">Icona</span>
         <IconPicker name="icon" icons={PLANNED_ICONS} defaultValue={initial?.icon} />

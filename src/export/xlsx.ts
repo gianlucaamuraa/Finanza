@@ -2,7 +2,8 @@
 
 import ExcelJS from "exceljs";
 import { monthLabel } from "@/lib/dates";
-import type { Report } from "./model";
+import { breakdown } from "@/lib/monthly";
+import { separateNames, separateOf, type Report } from "./model";
 
 const EUR = '#,##0.00 "€";-#,##0.00 "€"';
 const ACCENT = "FF0F766E";
@@ -68,8 +69,7 @@ function summary(wb: ExcelJS.Workbook, r: Report) {
   line("Quota giornaliera", Math.max(0, Math.round(m.quota.quota)), `${m.quota.daysLeft} giorni al prossimo stipendio`);
   section("Accantonamenti");
   line("Da accantonare questo mese", m.setAside?.amount ?? 0, "spese prevedibili + lungo termine");
-  line("  di cui spese prevedibili", m.setAside?.planned ?? 0);
-  line("  di cui lungo termine", m.setAside?.investment ?? 0);
+  for (const [label, v] of breakdown(m.setAside)) line(`  di cui ${label.toLowerCase()}`, v);
   line("Già versato", m.setAside?.paid ?? 0, "rate e versamenti del mese segnati come versati");
   line("Accantonato", m.setAside?.savingPaid ?? 0, "solo i soldi messi da parte (escluse le spese che non sono accantonamenti)");
   line("Al prossimo stipendio", m.nextSetAside?.amount ?? 0, `${r.range.nextPayday.split("-").reverse().join("/")} · per ${monthLabel(r.nextMonth)}`);
@@ -94,10 +94,15 @@ export async function buildXlsx(r: Report): Promise<Blob> {
     { header: "Saldo attuale", width: 16, type: "eur" }, { header: "Nella quota", width: 12 }, { header: "Escluso dal patrimonio", width: 22 }, { header: "Archiviato", width: 12 },
   ], r.accounts.map((a) => [a.name, a.kind, eurOf(a.initial), eurOf(a.balance), a.inQuota ? "sì" : "", a.excluded ? "sì" : "", a.archived ? "sì" : ""]));
 
+  const sepNames = separateNames(r.overview);
   sheet(wb, "Mese per mese", [
     { header: "Mese", width: 14 }, { header: "Totale da accantonare", width: 22, type: "eur" }, { header: "Spese prevedibili", width: 18, type: "eur" },
+    ...sepNames.map((n) => ({ header: n, width: Math.max(14, n.length + 4), type: "eur" as const })),
     { header: "Lungo termine", width: 16, type: "eur" }, { header: "Versato", width: 14, type: "eur" }, { header: "Voci", width: 8 }, { header: "Voci versate", width: 13 },
-  ], r.overview.map((o) => [month(o.month), eurOf(o.amount), eurOf(o.planned), eurOf(o.investment), eurOf(o.paid), o.count, o.paidCount]));
+  ], r.overview.map((o) => [
+    month(o.month), eurOf(o.amount), eurOf(o.plannedMain), ...sepNames.map((n) => eurOf(separateOf(o, n))),
+    eurOf(o.investment), eurOf(o.paid), o.count, o.paidCount,
+  ]));
 
   sheet(wb, "Entrate", [
     { header: "Mese", width: 14 }, { header: "Data", width: 12, type: "date" }, { header: "Descrizione", width: 30 }, { header: "Importo", width: 14, type: "eur" },

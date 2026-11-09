@@ -171,9 +171,12 @@ export default function Dashboard() {
                 </span>
                 <span className="right num">+{eur(income)}</span>
               </Link>
-              <span className="progress" style={{ display: "block", marginTop: 12 }}>
-                <i className={allocated > income ? "over" : ""} style={{ width: `${Math.min(100, (allocated / income) * 100)}%` }} />
-              </span>
+              {/* barra della ripartizione: un colore per conto */}
+              <div className="stack" style={{ marginTop: 12, marginBottom: 0 }} role="img" aria-label="Ripartizione dello stipendio per conto">
+                {split.map(([id, v]) => (
+                  <i key={id} style={{ width: `${(v / splitBase) * 100}%`, background: accById.get(id)?.color }} />
+                ))}
+              </div>
               <div className="mini-stats">
                 <div>
                   <span>Ripartito</span>
@@ -193,6 +196,18 @@ export default function Dashboard() {
                   <small>di {eur(setAside?.savingAmount ?? 0)}</small>
                 </div>
               </div>
+              {split.length > 0 && (
+                <div className="legend" style={{ marginTop: 12 }}>
+                  {split.map(([id, v]) => (
+                    <div key={id}>
+                      <span className="dot" style={{ background: accById.get(id)?.color }} />
+                      {accById.get(id)?.name}
+                      <span className="amt num">{eur(v)}</span>
+                      <span className="pct num">{Math.round((v / splitBase) * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </Card>
@@ -244,33 +259,6 @@ export default function Dashboard() {
       </div>
 
       <div>
-        <Card id="dashboard-3" title={<>
-            Ripartizione stipendio
-            <Link to="/movimenti" className="link">Dettagli <ChevronRight size={14} /></Link>
-        </>}>
-          {split.length === 0 ? (
-            <p className="empty">Nessuna ripartizione per questo mese.</p>
-          ) : (
-            <>
-              <div className="stack">
-                {split.map(([id, v]) => (
-                  <i key={id} style={{ width: `${(v / splitBase) * 100}%`, background: accById.get(id)?.color }} />
-                ))}
-              </div>
-              <div className="legend">
-                {split.map(([id, v]) => (
-                  <div key={id}>
-                    <span className="dot" style={{ background: accById.get(id)?.color }} />
-                    {accById.get(id)?.name}
-                    <span className="amt num">{eur(v)}</span>
-                    <span className="pct num">{Math.round((v / splitBase) * 100)}%</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-
         <Card id="dashboard-4" title={<>
             Prossime scadenze
             <Link to="/spese-prevedibili" className="link">Tutte <ChevronRight size={14} /></Link>
@@ -301,11 +289,19 @@ export default function Dashboard() {
             <p className="empty">Nessun PAC impostato.</p>
           ) : (
             <>
-              <MonthBars cells={pacCells} />
-              <div className="meta">
+              {pacYear === 0 && pacPlanned === 0 ? (
+                <p className="empty" style={{ textAlign: "left", margin: 0 }}>
+                  {investments.filter((i) => i.startMonth > current).map((i) => `${i.name} parte a ${monthLabel(i.startMonth).toLowerCase()} con ${eur(i.monthlyAmount)} al mese.`).join(" ") || "Nessun versamento quest'anno."}
+                </p>
+              ) : (
+                <>
+                  <MonthBars cells={pacCells} />
+                  <div className="meta">
                 <span>Versato: <b className="num">{eur(pacYear)}</b></span>
-                {pacPlanned > 0 && <span>Pianificato entro dicembre: {eur(pacPlanned)}</span>}
-              </div>
+                    {pacPlanned > 0 && <span>Pianificato entro dicembre: {eur(pacPlanned)}</span>}
+                  </div>
+                </>
+              )}
             </>
           )}
         </Card>

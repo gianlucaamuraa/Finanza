@@ -9,6 +9,7 @@ import { LogoutButton } from "@/components/Nav";
 import { LoadError, PageSkeleton } from "@/components/ui";
 import { Card } from "@/components/Card";
 import { HistoryCard } from "@/components/HistoryCard";
+import { HowItWorks } from "@/components/HowItWorks";
 
 export default function Impostazioni() {
   const { settings, payday } = useBase();
@@ -43,6 +44,8 @@ export default function Impostazioni() {
 
   return (
     <div style={{ maxWidth: 640 }}>
+      <HowItWorks payday={payday} />
+
       <Card id="impostazioni-1" title={<>Stipendio e quota giornaliera</>}>
         <SheetTrigger
           className="item"

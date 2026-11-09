@@ -7,7 +7,7 @@ import { MESI_LUNGHI, addMonths, monthIndex, monthLabel } from "@/lib/dates";
 import { eur, sum } from "@/lib/money";
 import { SheetTrigger } from "@/components/Sheet";
 import { ContributionForm, InvestmentForm } from "@/components/forms";
-import { LoadError, MonthBars, PageSkeleton } from "@/components/ui";
+import { LoadError, PageSkeleton } from "@/components/ui";
 import { FillMissingButton } from "./FillMissingButton";
 import { Card } from "@/components/Card";
 
@@ -110,20 +110,12 @@ export default function LungoTermine() {
         ))}
       </div>
 
-      <Card id="lungotermine-1" title={<>
+      <Card id="lungotermine-2" title={<>
           Versamenti {year}
           <span className="num" style={{ color: "var(--text)", textTransform: "none", letterSpacing: 0 }}>
             {eur(done)}{plan > 0 ? ` + ${eur(plan)} pian.` : ""}
           </span>
       </>}>
-        <MonthBars cells={cells} />
-        <div className="meta">
-          <span>Versato</span>
-          <span style={{ color: "#5fb3a8" }}>Tratteggiato: pianificato</span>
-        </div>
-      </Card>
-
-      <Card id="lungotermine-2" title={<>Mese per mese</>}>
         <div className="months">
           {cells.map((c, i) => (
             <SheetTrigger

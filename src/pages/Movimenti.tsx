@@ -5,7 +5,7 @@ import * as A from "@/api";
 import type { Account, Category, Investment, PeriodData, Planned } from "@/api";
 import { combine, useAccounts, useBalances, useBase, useCategories, useInvestments, usePeriod, usePlanned, useSpent } from "@/hooks";
 import { clampDay } from "@/lib/view";
-import { addDays, addMonths, dayLabel, dayLabelLong, diffDays, isMonth, monthLabel, type Month } from "@/lib/dates";
+import { addDays, addMonths, dayLabelLong, diffDays, isMonth, monthLabel, type Month } from "@/lib/dates";
 import { periodRange } from "@/lib/period";
 import { plannedInfo } from "@/lib/calc";
 import { allocationProposal } from "@/lib/monthly";
@@ -357,7 +357,6 @@ function Uscite({
       <SheetTrigger className="fab" title="Nuova uscita" ariaLabel="Nuova uscita" content={newExpense}>
         <Plus size={28} />
       </SheetTrigger>
-      <p className="note" style={{ textAlign: "center" }}>Periodo: {dayLabel(data.range.start)} – {dayLabel(data.range.end)}</p>
     </>
   );
 }

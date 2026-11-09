@@ -17,6 +17,7 @@ export function PlannedDetail({ planned, current, accounts }: { planned: Planned
 
   return (
     <>
+      <SeparateToggle planned={planned} />
       <div className="calc" style={{ marginTop: 0 }}>
         <div>
           <span>Versato</span>
@@ -93,6 +94,41 @@ function PayForm({ planned, month, amount, paid, accounts, accountId, onDone }: 
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+/** Spunta "Mostra a parte" in cima alla scheda: si salva subito al tocco. */
+function SeparateToggle({ planned }: { planned: Planned }) {
+  const [on, setOn] = useState(!planned.isSaving);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="field">
+      {error && <div className="form-error">{error}</div>}
+      <label className="toggle">
+        <span>
+          Mostra a parte
+          <small className="muted" style={{ display: "block", fontSize: 12, fontWeight: 400 }}>
+            Riga separata sotto ogni mese, fuori da "Accantonato"
+          </small>
+        </span>
+        <input
+          type="checkbox" checked={on} disabled={pending}
+          onChange={(e) => {
+            const v = e.target.checked;
+            setOn(v);
+            setError(null);
+            start(async () => {
+              const r = await A.setPlannedSeparate(planned.id, v);
+              if (!r?.ok) {
+                setOn(!v);
+                setError(r?.error ?? "Errore");
+              }
+            });
+          }}
+        />
+      </label>
     </div>
   );
 }

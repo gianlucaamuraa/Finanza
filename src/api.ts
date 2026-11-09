@@ -373,7 +373,7 @@ export const savePlanned = (fd: FormData) => run(async () => {
     total_amount: [...amounts.values()].reduce((a, x) => a + x, 0),
     start_month: start, end_month: end, note: str(fd, "note") || null, account_id: optId(fd, "accountId"),
     // la colonna si scrive solo se serve, così funziona anche prima di rieseguire lo script del database
-    ...(fd.get("isSaving") !== "on" || fd.get("wasNotSaving") === "1" ? { is_saving: fd.get("isSaving") === "on" } : {}),
+    ...(fd.get("separate") === "on" || fd.get("wasSeparate") === "1" ? { is_saving: fd.get("separate") !== "on" } : {}),
   };
   let id = optId(fd, "id");
   if (id) await q(sb().from("planned_expenses").update(v).eq("id", id));
@@ -393,6 +393,11 @@ export const payInstallment = (p: Planned, m: Month, fd: FormData | null) => run
 });
 
 export const deletePlanned = (id: number) => remove("planned_expenses", id);
+
+/** "Mostra a parte": la spesa resta nel totale, ma si vede separata e non conta in "Accantonato". */
+export const setPlannedSeparate = (id: number, separate: boolean) => run(async () => {
+  await q(sb().from("planned_expenses").update({ is_saving: !separate }).eq("id", id));
+});
 
 // Lungo termine
 export const saveInvestment = (fd: FormData) => run(async () => {

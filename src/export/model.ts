@@ -109,6 +109,13 @@ export async function buildReport() {
 
 export type Report = Awaited<ReturnType<typeof buildReport>>;
 
+/** Nomi delle spese mostrate a parte che compaiono nei mesi indicati (una colonna ciascuna nelle tabelle). */
+export function separateNames(rows: { separate: { name: string }[] }[]): string[] {
+  return [...new Set(rows.flatMap((o) => o.separate.map((x) => x.name)))];
+}
+export const separateOf = (o: { separate: { name: string; amount: number }[] }, name: string) =>
+  o.separate.filter((x) => x.name === name).reduce((a, x) => a + x.amount, 0);
+
 /** Scarica un file generato nel browser. */
 export function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);

@@ -5,7 +5,7 @@ import { netWorth, sumCells } from "@/lib/view";
 import { dailyQuota, plannedInfo } from "@/lib/calc";
 import { addDays, addMonths, dayLabel, dayLabelLong, diffDays, monthLabel } from "@/lib/dates";
 import { periodRange } from "@/lib/period";
-import { monthsOverview } from "@/lib/monthly";
+import { breakdown, monthsOverview } from "@/lib/monthly";
 import { eur, sum } from "@/lib/money";
 import { IconBox } from "@/components/Icon";
 import { SheetTrigger } from "@/components/Sheet";
@@ -203,10 +203,14 @@ export default function Dashboard() {
         </>}>
           <div className="kpi-t">Al prossimo stipendio · {dayLabel(period.range.nextPayday)}</div>
           <div className="kpi-v num" style={{ fontSize: 26 }}>{eur(nextSetAside?.amount ?? 0)}</div>
-          <div className="kpi-s">
-            da accantonare per {monthLabel(addMonths(current, 1)).split(" ")[0].toLowerCase()}
-            {!!nextSetAside?.investment && ` · prevedibili ${eur(nextSetAside.planned)} + lungo termine ${eur(nextSetAside.investment)}`}
-          </div>
+          <div className="kpi-s">da accantonare per {monthLabel(addMonths(current, 1)).split(" ")[0].toLowerCase()}</div>
+          {breakdown(nextSetAside).length > 1 && (
+            <div className="mini-stats" style={{ gridTemplateColumns: `repeat(${breakdown(nextSetAside).length}, 1fr)` }}>
+              {breakdown(nextSetAside).map(([label, v]) => (
+                <div key={label}><span>{label}</span><b className="num">{eur(v, 2)}</b></div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card id="dashboard-2" title={<>

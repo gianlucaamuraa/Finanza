@@ -4,7 +4,8 @@ import { jsPDF } from "jspdf";
 import autoTable, { type RowInput, type Styles } from "jspdf-autotable";
 import { MESI_LUNGHI, monthLabel } from "@/lib/dates";
 import { eur as eurRaw } from "@/lib/money";
-import type { Report } from "./model";
+import { breakdown } from "@/lib/monthly";
+import { separateNames, separateOf, type Report } from "./model";
 
 type RGB = [number, number, number];
 const ACCENT: RGB = [15, 118, 110];
@@ -124,7 +125,7 @@ export async function buildPdf(r: Report): Promise<Blob> {
     : `Lo stipendio di ${mese(r.current)} non è ancora stato inserito.`);
   para(`Finora hai speso ${e(m.spent)}. La quota giornaliera, cioè quanto puoi spendere ogni giorno fino al prossimo stipendio, è di ${e2(Math.max(0, Math.round(m.quota.quota)))} per i prossimi ${m.quota.daysLeft} giorni.`);
   para(
-    `Questo mese vanno accantonati ${e(sa?.amount ?? 0)} (${e(sa?.planned ?? 0)} per le spese prevedibili e ${e(sa?.investment ?? 0)} per il lungo termine); finora ne hai versati ${e(sa?.paid ?? 0)}, di cui ${e(sa?.savingPaid ?? 0)} messi da parte. ` +
+    `Questo mese vanno accantonati ${e(sa?.amount ?? 0)} (${breakdown(sa).map(([l, v]) => `${e(v)} ${l.toLowerCase()}`).join(", ") || "niente"}); finora ne hai versati ${e(sa?.paid ?? 0)}, di cui ${e(sa?.savingPaid ?? 0)} messi da parte. ` +
     `Con il prossimo stipendio, il ${dateLong(r.range.nextPayday)}, dovrai accantonare ${e(next?.amount ?? 0)}.`,
   );
 
@@ -190,10 +191,12 @@ export async function buildPdf(r: Report): Promise<Blob> {
   if (upcoming.length) {
     h1("Accantonamenti dei prossimi mesi");
     para("Quanto andrà accantonato ogni mese, sommando le rate delle spese prevedibili e i versamenti di lungo termine.");
+    const sep = separateNames(upcoming);
+    const head = ["Mese", "Prevedibili", ...sep, "Lungo termine", "Totale", "Versato"];
     table(
-      ["Mese", "Prevedibili", "Lungo termine", "Totale", "Versato"],
-      upcoming.map((o) => [monthLabel(o.month), e(o.planned), e(o.investment), e(o.amount), o.paid ? e(o.paid) : ""]),
-      [1, 2, 3, 4],
+      head,
+      upcoming.map((o) => [monthLabel(o.month), e(o.plannedMain), ...sep.map((n) => e(separateOf(o, n))), e(o.investment), e(o.amount), o.paid ? e(o.paid) : ""]),
+      head.map((_, i) => i).slice(1),
     );
   }
 

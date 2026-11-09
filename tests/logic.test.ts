@@ -242,3 +242,17 @@ describe("saving vs payments", async () => {
     expect(m).toMatchObject({ amount: 114900, paid: 114900, savingAmount: 84206, savingPaid: 84206 });
   });
 });
+
+describe("breakdown under each month", async () => {
+  const { monthsOverview, breakdown } = await import("../src/lib/monthly");
+  it("shows separate expenses on their own line, total unchanged", () => {
+    const mk = (id: number, name: string, amount: number, isSaving: boolean) => ({
+      id, name, icon: "tag", totalAmount: amount, startMonth: "2026-11", endMonth: "2026-11", accountId: null, isSaving,
+      installments: new Map([["2026-11", { amount, paid: null }]]),
+    });
+    const m = monthsOverview("2026-11", [mk(1, "Risparmio", 52906, true), mk(2, "Assicurazione", 6500, true), mk(3, "Prestito Compass", 30694, false)], [])
+      .find((x) => x.month === "2026-11")!;
+    expect(m.amount).toBe(90100);
+    expect(breakdown(m)).toEqual([["Spese prevedibili", 59406], ["Prestito Compass", 30694]]);
+  });
+});

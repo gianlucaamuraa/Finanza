@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { ChevronRight, Plus } from "lucide-react";
 import { combine, useAccounts, useBase, useInvestments, usePlanned } from "@/hooks";
 import { plannedInfo, type PlannedStatus } from "@/lib/calc";
-import { monthEntries, monthsOverview } from "@/lib/monthly";
+import { breakdown, monthEntries, monthsOverview } from "@/lib/monthly";
 import { addMonths, dayLabelLong, monthLabel, type Month } from "@/lib/dates";
 import { periodRange } from "@/lib/period";
 import { eur, sum } from "@/lib/money";
@@ -55,10 +55,11 @@ export default function SpesePrevedibili() {
       <div className="card hero">
         <div className="label">Da accantonare · {monthLabel(current)}</div>
         <div className="big num">{eur(now?.amount ?? 0, 2)}</div>
-        <div className="pills">
-          <div className="pill"><span>Prevedibili ({active.length})</span><b className="num">{eur(now?.planned ?? 0, "auto")}</b></div>
-          <div className="pill"><span>Lungo termine</span><b className="num">{eur(now?.investment ?? 0, "auto")}</b></div>
-          <div className="pill"><span>Versato</span><b className="num">{eur(now?.paid ?? 0, "auto")}</b></div>
+        <div className="pills" style={{ flexWrap: "wrap" }}>
+          {breakdown(now).map(([label, v]) => (
+            <div className="pill" key={label} style={{ flex: "1 1 40%" }}><span>{label}</span><b className="num">{eur(v, "auto")}</b></div>
+          ))}
+          <div className="pill" style={{ flex: "1 1 40%" }}><span>Versato</span><b className="num">{eur(now?.paid ?? 0, "auto")}</b></div>
         </div>
       </div>
 
@@ -72,10 +73,9 @@ export default function SpesePrevedibili() {
             <span style={{ flex: 1, minWidth: 0 }}>
               <span className="card-title" style={{ marginBottom: 4 }}>Al prossimo stipendio · {dayLabelLong(nextPayday)}</span>
               <small className="muted" style={{ display: "block", fontSize: 13 }}>Da accantonare per {monthLabel(nextMonth)}</small>
-              <small className="muted" style={{ display: "block", fontSize: 12, marginTop: 4, whiteSpace: "nowrap" }}>Prevedibili {eur(next?.planned ?? 0, "auto")}</small>
-              {!!next?.investment && (
-                <small className="muted" style={{ display: "block", fontSize: 12, whiteSpace: "nowrap" }}>Lungo termine {eur(next.investment, "auto")}</small>
-              )}
+              {breakdown(next).map(([label, v], i) => (
+                <small key={label} className="muted" style={{ display: "block", fontSize: 12, marginTop: i === 0 ? 4 : 0, whiteSpace: "nowrap" }}>{label} {eur(v, "auto")}</small>
+              ))}
             </span>
             <b className="num" style={{ fontSize: 22 }}>{eur(next?.amount ?? 0, 2)}</b>
             <ChevronRight size={16} className="muted" aria-hidden />
@@ -169,8 +169,9 @@ function MonthlyCard({ months, current, planned, investments, accounts, showPast
                     {monthLabel(m.month, false)}
                     <em style={{ color: "var(--muted)", fontWeight: 500 }}>
                       {m.month === current && <span style={{ display: "block", color: "var(--accent)", fontWeight: 600 }}>questo mese</span>}
-                      {m.planned > 0 && <span style={{ display: "block", whiteSpace: "nowrap" }}>Prevedibili {eur(m.planned, "auto")}</span>}
-                      {m.investment > 0 && <span style={{ display: "block", whiteSpace: "nowrap" }}>Lungo termine {eur(m.investment, "auto")}</span>}
+                      {breakdown(m).map(([label, v]) => (
+                        <span key={label} style={{ display: "block", whiteSpace: "nowrap" }}>{label} {eur(v, "auto")}</span>
+                      ))}
                     </em>
                   </span>
                   <span className="num inst-amount">{eur(m.amount, 2)}</span>
@@ -225,13 +226,17 @@ function MonthDetail({ month, current, planned, investments, accounts }: {
         <b className="num">{eur(total, 2)}</b>
       </div>
 
-      {(["planned", "investment"] as const).map((kind) => {
-        const list = entries.filter((e) => e.kind === kind);
+      {([
+        ["Spese prevedibili", (e: (typeof entries)[number]) => e.kind === "planned" && e.saving],
+        ...entries.filter((e) => e.kind === "planned" && !e.saving).map((x) => [x.name, (e: (typeof entries)[number]) => e.key === x.key] as const),
+        ["Lungo termine", (e: (typeof entries)[number]) => e.kind === "investment"],
+      ] as const).map(([title, match]) => {
+        const list = entries.filter(match);
         if (list.length === 0) return null;
         return (
-          <div key={kind}>
+          <div key={title}>
             <div className="card-title">
-              {kind === "planned" ? "Spese prevedibili" : "Lungo termine"}
+              {title}
               <span className="num" style={{ color: "var(--text)" }}>{eur(sum(list.map((e) => e.rata)), 2)}</span>
             </div>
             <div className="list" style={{ marginBottom: 18 }}>

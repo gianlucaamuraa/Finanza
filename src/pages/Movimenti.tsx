@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Briefcase, ChevronRight, CircleCheck, Plus } from "lucide-react";
+import { Briefcase, ChevronRight, CircleCheck, Plus, X } from "lucide-react";
 import * as A from "@/api";
 import type { Account, Category, Investment, PeriodData, Planned } from "@/api";
 import { combine, useAccounts, useBalances, useBase, useCategories, useInvestments, usePeriod, usePlanned, useSpent } from "@/hooks";
@@ -109,9 +109,27 @@ function Stipendio({ period, payday, current, data, accounts, opts, planned, inv
   const remaining = income - allocated;
   const base = Math.max(income, 1);
   const showProposal = proposal.length > 0 || (income > 0 && remaining > 0);
+  // avviso dopo "Accetta": quanto resta da ripartire
+  const [saved, setSaved] = useState(false);
+  const onAccepted = () => {
+    setSaved(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <>
+      {saved && (
+        <div className={`remaining${remaining === 0 ? " ok" : remaining < 0 ? " over" : ""}`} role="status" style={{ marginTop: 0, marginBottom: 12 }}>
+          <span style={{ display: "inline-flex", gap: 6, alignItems: "center", flex: 1 }}>
+            <CircleCheck size={16} />
+            {remaining === 0 ? "Ripartizione salvata: stipendio ripartito tutto" : remaining > 0 ? "Ripartizione salvata · restano da ripartire" : "Ripartizione salvata · oltre lo stipendio di"}
+          </span>
+          {remaining !== 0 && <span className="num">{eur(Math.abs(remaining), 2)}</span>}
+          <button type="button" aria-label="Chiudi avviso" onClick={() => setSaved(false)} style={{ background: "none", border: "none", color: "inherit", padding: 0, cursor: "pointer", display: "inline-flex" }}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
       <Card id="movimenti-1" title={<>
           Entrate
           <SheetTrigger className="link" title="Nuova entrata" content={<IncomeForm period={period} payday={payday} defaultDate={data.range.start} />}>
@@ -132,6 +150,23 @@ function Stipendio({ period, payday, current, data, accounts, opts, planned, inv
               <span className="right num">+{eur(i.amount, "auto")}</span>
             </SheetTrigger>
           ))
+        )}
+        {income > 0 && (
+          <>
+            <span className="progress" style={{ display: "block", marginTop: 10 }}>
+              <i className={remaining < 0 ? "over" : ""} style={{ width: `${Math.min(100, Math.max(0, (allocated / income) * 100))}%` }} />
+            </span>
+            <div className={`remaining${remaining === 0 ? " ok" : remaining < 0 ? " over" : ""}`} style={{ marginTop: 10 }}>
+              {remaining === 0 ? (
+                <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><CircleCheck size={16} /> Stipendio ripartito completamente</span>
+              ) : remaining > 0 ? (
+                <span>Da ripartire <small style={{ fontWeight: 500, opacity: 0.8 }}>· ripartiti {eur(allocated, "auto")} di {eur(income, "auto")}</small></span>
+              ) : (
+                <span>Ripartito più dell&apos;entrata</span>
+              )}
+              {remaining !== 0 && <span className="num">{eur(Math.abs(remaining), 2)}</span>}
+            </div>
+          </>
         )}
 
         <div className="card-title" style={{ marginTop: 16 }}>
@@ -162,24 +197,12 @@ function Stipendio({ period, payday, current, data, accounts, opts, planned, inv
             })}
           </div>
         )}
-        {income > 0 && (
-          <div className={`remaining${remaining === 0 ? " ok" : remaining < 0 ? " over" : ""}`}>
-            {remaining === 0 ? (
-              <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><CircleCheck size={16} /> Stipendio ripartito completamente</span>
-            ) : remaining > 0 ? (
-              <span>Da ripartire</span>
-            ) : (
-              <span>Ripartito più dell&apos;entrata</span>
-            )}
-            <span className="num">{eur(Math.abs(remaining), "auto")}</span>
-          </div>
-        )}
       </Card>
 
-      {showProposal && <ProposalCard key={`${period}-${proposal.map((x) => x.key).join()}`} period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} />}
+      {showProposal && <ProposalCard key={`${period}-${proposal.map((x) => x.key).join()}`} period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} income={income} onAccepted={onAccepted} />}
       {showProposal && autoOpen && (
         <Sheet title={`Ripartisci lo stipendio di ${monthLabel(period)}`} onClose={closeAuto}>
-          <ProposalCard inSheet period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} />
+          <ProposalCard inSheet period={period} items={proposal} accounts={opts} remaining={income > 0 ? remaining : null} income={income} onAccepted={onAccepted} />
         </Sheet>
       )}
 
@@ -367,8 +390,9 @@ function Uscite({
  */
 const SALARY_ACC_KEY = "finanza-conto-stipendio-personale";
 
-function ProposalCard({ period, items, accounts, remaining, inSheet }: {
+function ProposalCard({ period, items, accounts, remaining, inSheet, income, onAccepted }: {
   period: Month; items: ReturnType<typeof allocationProposal>; accounts: Opt[]; remaining: number | null; inSheet?: boolean;
+  income: number; onAccepted: () => void;
 }) {
   const close = useSheetClose();
   const [on, setOn] = useState(() => new Set(items.map((x) => x.key)));
@@ -403,7 +427,13 @@ function ProposalCard({ period, items, accounts, remaining, inSheet }: {
       <p className="note" style={{ marginTop: 0 }}>
         Rate e versamenti di {monthLabel(period)} non ancora coperti{showSalary ? " e, in fondo, il resto dello stipendio" : ""}. Controlla importi e conti, poi accetta: le rate risulteranno versate.
       </p>
-      <ActionForm action={(fd) => A.acceptProposal(period, fd)} onSuccess={close}>
+      <ActionForm
+        action={(fd) => A.acceptProposal(period, fd)}
+        onSuccess={() => {
+          close();
+          onAccepted();
+        }}
+      >
         <div className="list" style={{ marginBottom: 12 }}>
           {items.map((x) => (
             <div key={x.key} className="item" style={{ cursor: "default", flexWrap: "wrap", opacity: on.has(x.key) ? 1 : 0.5 }}>
@@ -438,6 +468,17 @@ function ProposalCard({ period, items, accounts, remaining, inSheet }: {
               </div>
             </div>
           ))}
+          {showSalary && (
+            <div className="calc" style={{ margin: "12px 0 4px" }}>
+              <div>
+                <span>Dopo queste voci restano</span>
+                <small>
+                  {remaining !== income ? `da ripartire ${eur(remaining ?? 0, "auto")}` : `stipendio ${eur(income, "auto")}`} − voci spuntate {eur(itemsTotal, "auto")}
+                </small>
+              </div>
+              <b className="num">{eur((remaining ?? 0) - itemsTotal, 2)}</b>
+            </div>
+          )}
           {showSalary && (
             <div className="item" style={{ cursor: "default", flexWrap: "wrap", opacity: salaryOn ? 1 : 0.5 }}>
               <input type="checkbox" name="item" value="s0" checked={salaryOn} onChange={() => setSalaryOn(!salaryOn)} aria-label="Includi Stipendio personale" style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />

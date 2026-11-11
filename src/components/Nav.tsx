@@ -37,7 +37,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar" aria-label="Navigazione">
       <div className="brand">
-        <span className="ico" style={{ background: "var(--accent)", color: "#fff" }}><Wallet size={18} /></span>
+        <span className="ico" style={{ background: "var(--accent)", color: "var(--on-accent)" }}><Wallet size={18} /></span>
         Finanza
       </div>
       {ITEMS.map(({ href, label, icon: I }) => (

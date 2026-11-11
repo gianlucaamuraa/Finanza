@@ -67,7 +67,7 @@ export function App() {
 function NotConfigured() {
   return (
     <main style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 20 }}>
-      <div className="card" style={{ maxWidth: 460, borderColor: "#fecaca", background: "#fef2f2" }}>
+      <div className="card" style={{ maxWidth: 460, borderColor: "var(--neg-line)", background: "var(--neg-soft)" }}>
         <div className="card-title" style={{ color: "var(--neg)" }}>Configurazione da correggere</div>
         <p style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 12 }}>{configProblem}</p>
         <p className="note" style={{ margin: 0 }}>

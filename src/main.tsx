@@ -8,6 +8,7 @@ import { queryClient } from "./queryClient";
 import { App } from "./App";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { startUpdateCheck } from "./update";
+import { startTheme } from "./theme";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -22,3 +23,4 @@ createRoot(document.getElementById("root")!).render(
 );
 
 startUpdateCheck();
+startTheme();

@@ -55,7 +55,7 @@ export const pctClass = (p: number) => (p > 1 ? "over" : p > 0.85 ? "warn" : "")
 
 export function LoadError({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
-    <div className="card" style={{ borderColor: "#fecaca", background: "#fef2f2" }}>
+    <div className="card" style={{ borderColor: "var(--neg-line)", background: "var(--neg-soft)" }}>
       <div className="card-title" style={{ color: "var(--neg)" }}>Impossibile caricare i dati</div>
       <p style={{ fontSize: 14, marginBottom: 12 }}>{friendlyError(error)}</p>
       {onRetry && <button type="button" className="btn ghost" style={{ marginBottom: 0 }} onClick={onRetry}>Riprova</button>}

@@ -28,6 +28,7 @@ App web personale e responsive per gestire le proprie finanze. Si usa dal telefo
 - **Lungo termine (PAC)**: versamenti mese per mese e anno per anno, mesi futuri pianificati, collegamento opzionale a un conto.
 - **Impostazioni**: conti e contanti, categorie, giorno dello stipendio, conti che contano per la quota.
   - *Storico modifiche*: ogni aggiunta, modifica o cancellazione viene salvata; "Annulla" rimette i dati com'erano.
+  - *Aspetto*: tema automatico (come il telefono), chiaro o scuro.
 
 Il mese va da uno stipendio al successivo. Se lo stipendio arriva dal giorno 15 in poi, apre il mese successivo: lo stipendio del 27 ottobre apre "Novembre".
 
